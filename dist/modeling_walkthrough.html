@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="2단 병진 스쿠핑 링크의 목표 경로, 역기구학, 폐루프 함수 생성을 그림과 애니메이션으로 설명하는 학습 페이지">
+  <title>2단 병진 링크 · 모델링 워크스루</title>
+  <link rel="stylesheet" href="modeling_walkthrough.css">
+</head>
+<body>
+  <div class="reading-progress" aria-hidden="true"><span id="readingProgress"></span></div>
+
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="처음으로">
+      <span class="brand-mark">SL</span>
+      <span><strong>Scoop Linkage</strong><small>MODELING WALKTHROUGH</small></span>
+    </a>
+    <div class="top-actions">
+      <button class="button ghost" id="motionToggle" type="button" aria-pressed="false">운동 줄이기</button>
+      <a class="button ghost" href="mechanism_explained.html">기존 상세 해설</a>
+      <a class="button primary" href="index.html">기구 편집기</a>
+    </div>
+  </header>
+
+  <div class="page-shell" id="top">
+    <aside class="chapter-rail" aria-label="학습 단계">
+      <p class="rail-label">LEARNING PATH</p>
+      <nav id="chapterNav">
+        <a href="#overview" class="active"><span>00</span><em>전체 지도</em></a>
+        <a href="#chain"><span>01</span><em>벡터 체인</em></a>
+        <a href="#target"><span>02</span><em>목표 경로</em></a>
+        <a href="#vectors"><span>03</span><em>두 회전벡터</em></a>
+        <a href="#ik"><span>04</span><em>정확한 역기구학</em></a>
+        <a href="#closure"><span>05</span><em>Q–K 폐루프</em></a>
+        <a href="#frame"><span>06</span><em>한 프레임 계산</em></a>
+        <a href="#meaning"><span>07</span><em>오차와 판정</em></a>
+      </nav>
+      <div class="rail-key">
+        <span><i class="dot blue"></i>1단 φ</span>
+        <span><i class="dot orange"></i>2단 ψ</span>
+        <span><i class="dot violet"></i>폐루프</span>
+        <span><i class="dot red"></i>목표</span>
+      </div>
+    </aside>
+
+    <main>
+      <section class="hero chapter" id="overview" data-chapter="overview">
+        <div class="hero-copy">
+          <p class="eyebrow">START HERE · 두 문제를 분리하면 전체가 보입니다</p>
+          <h1>원하는 경로를 먼저 풀고,<br><span>그 각도 관계를 링크로 만듭니다.</span></h1>
+          <p class="hero-lede">
+            이 기구의 모델링은 한 번에 풀는 문제가 아닙니다.
+            먼저 모터가 두 개라고 가정하고 목표 경로가 요구하는
+            <strong>φ, ψ를 정확히 계산</strong>합니다. 그런 다음 <strong>Q–K 링크</strong>로
+            ψ가 φ에 따라 저절로 나오게 만듭니다.
+          </p>
+
+          <div class="two-problems" aria-label="두 단계 요약">
+            <article>
+              <span class="phase-tag ideal">IDEAL · 2 DOF</span>
+              <strong>경로 역기구학</strong>
+              <p>목표 TIP 점마다 필요한 φ와 ψ를 구한다.</p>
+            </article>
+            <div class="handoff" aria-hidden="true"><span>ψ<sub>required</sub>(φ)</span>→</div>
+            <article>
+              <span class="phase-tag real">REAL · 1 DOF</span>
+              <strong>폐루프 링크 합성</strong>
+              <p>Q–K의 길이 구속으로 위 각도 함수를 근사한다.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="hero-visual card dark-card">
+          <div class="card-head">
+            <div><span class="mini-label">LIVE MECHANISM</span><strong>최적화된 실제 기구</strong></div>
+            <button class="icon-button" id="heroPlay" type="button" aria-label="애니메이션 재생 또는 정지">❚❚</button>
+          </div>
+          <svg id="heroMechanism" class="diagram hero-svg" viewBox="0 0 680 500" role="img" aria-label="실제 2단 병진 링크가 운동하며 TIP 경로를 그리는 애니메이션"></svg>
+          <div class="hero-readouts">
+            <span><small>입력 φ</small><strong id="heroPhi">—</strong></span>
+            <span><small>자동 ψ</small><strong id="heroPsi">—</strong></span>
+            <span><small>TIP</small><strong id="heroTip">—</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <div class="logic-strip" aria-label="전체 계산 흐름">
+        <span>Desired path</span><i>→</i><span>exact IK</span><i>→</i><span>ψ<sub>required</sub>(φ)</span><i>→</i><span>Q–K synthesis</span><i>→</i><span>actual TIP</span>
+      </div>
+
+      <section class="chapter content-grid" id="chain" data-chapter="chain">
+        <div class="story">
+          <p class="step-no">01 · GEOMETRY</p>
+          <h2>막대를 잠시 잊고,<br>벡터 체인만 봅니다.</h2>
+          <p>핵심 중심선은 다섯 점의 연결입니다. 오른쪽 그림의 단계 버튼을 누르면 실제 코드가 좌표를 계산하는 순서로 벡터가 쌓입니다.</p>
+
+          <ol class="equation-steps">
+            <li data-chain-step="1"><span>1</span><div><code>P₁ = O₁ + r₁e(φ)</code><small>1단 크랭크는 회전한다.</small></div></li>
+            <li data-chain-step="2"><span>2</span><div><code>V₂ = P₁ + m</code><small>m은 세계 좌표계에서 회전하지 않는다.</small></div></li>
+            <li data-chain-step="3"><span>3</span><div><code>W = V₂ + r₂e(ψ)</code><small>2단 회전벡터를 더한다.</small></div></li>
+            <li data-chain-step="4"><span>4</span><div><code>TIP = W + c</code><small>c도 평행사변형 출력에 고정된 상수벡터다.</small></div></li>
+          </ol>
+
+          <div class="callout blue-callout">
+            <strong>“병진”은 직선운동이라는 뜻이 아닙니다.</strong>
+            <p>크랭크는 돌아가지만, 평행사변형의 출력 플랫폼은 기울어지지 않고 방향을 유지한 채 이동합니다.</p>
+          </div>
+        </div>
+
+        <div class="visual-column sticky-visual">
+          <article class="card diagram-card">
+            <div class="card-head">
+              <div><span class="mini-label">VECTOR CHAIN</span><strong>O₁ → P₁ → V₂ → W → TIP</strong></div>
+              <span class="status-chip" id="chainStatus">1 / 4</span>
+            </div>
+            <svg id="chainDiagram" class="diagram" viewBox="0 0 680 440" role="img" aria-label="TIP 위치를 구성하는 벡터 체인"></svg>
+            <div class="segmented" id="chainControls" aria-label="벡터 계산 단계">
+              <button type="button" data-step="1" class="active">P₁</button>
+              <button type="button" data-step="2">V₂</button>
+              <button type="button" data-step="3">W</button>
+              <button type="button" data-step="4">TIP</button>
+            </div>
+          </article>
+          <article class="orientation-card">
+            <div><span class="mini-label">ORIENTATION DECOUPLING</span><strong>회전하는 크랭크, 회전하지 않는 플랫폼</strong></div>
+            <div class="orientation-demo"><span class="crank-symbol"></span><span class="platform-symbol">수평 유지</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter content-grid reverse" id="target" data-chapter="target">
+        <div class="story">
+          <p class="step-no">02 · TARGET PATH</p>
+          <h2>링크보다 먼저,<br>TIP이 가야 할 길을 못박습니다.</h2>
+          <p>손끝은 바닥 위 0.3 mm 높이에서 15 mm 직진한 뒤, 가로 반경 5 mm·세로 반경 10 mm인 1/4 타원을 따라 상승합니다.</p>
+
+          <div class="formula-card target-formula">
+            <span>직선 진입</span>
+            <code>x = −Lₛ + Lₛu, z = z₀</code>
+            <span>1/4 타원</span>
+            <code>x = a sinτ, z = z₀ + b(1 − cosτ)</code>
+          </div>
+
+          <p>1단 평행사변형만 있으면 출력은 항상</p>
+          <div class="center-equation">P(φ) = C₀ + r₁e(φ)</div>
+          <p>이고, 고정점 C₀에서 거리 r₁이 항상 같으므로 <strong>원만 그립니다.</strong> 직선과 타원이 붙은 목표를 만들려면 두 번째 회전벡터가 필요합니다.</p>
+
+          <div class="warning-note">
+            <strong>어려운 지점</strong>
+            <p>접합점에서 위치와 접선은 연속이지만 곡률은 0에서 0.4/mm로 즉시 뛵니다. 부드럽게 움직이는 강체 링크가 이 변화를 정확히 따라가기 어려운 이유입니다.</p>
+          </div>
+        </div>
+
+        <div class="visual-column sticky-visual">
+          <article class="card diagram-card">
+            <div class="card-head">
+              <div><span class="mini-label">TARGET GEOMETRY</span><strong>직선 15 mm + 1/4 타원</strong></div>
+              <button class="icon-button light" id="targetPlay" type="button" aria-label="목표 경로 애니메이션 재생 또는 정지">❚❚</button>
+            </div>
+            <svg id="targetDiagram" class="diagram" viewBox="0 0 680 390" role="img" aria-label="직선 진입과 1/4 타원 상승으로 이루어진 목표 경로"></svg>
+            <label class="range-row"><span>경로 위치</span><input id="targetSlider" type="range" min="0" max="120" value="0"><output id="targetReadout">0%</output></label>
+            <div class="metric-row three">
+              <span><small>현재 좌표</small><strong id="targetPoint">−15.00, 0.30</strong></span>
+              <span><small>접선 방향</small><strong id="targetTangent">0.0°</strong></span>
+              <span><small>TIP 자세</small><strong>90.0°</strong></span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter content-grid" id="vectors" data-chapter="vectors">
+        <div class="story">
+          <p class="step-no">03 · TWO ROTATING VECTORS</p>
+          <h2>두 원운동을 더하면<br>원이 아닌 경로가 됩니다.</h2>
+          <p>2단을 추가하면 손끝 위치는 다음 한 줄로 정리됩니다.</p>
+          <div class="hero-equation">
+            <span>TIP(φ)</span>
+            <strong>= C₀ + <i class="blue-text">r₁e(φ)</i> + <i class="orange-text">r₂e(ψ)</i></strong>
+          </div>
+          <p>파란 벡터 끝에 주황 벡터를 이어 붙인 끝점이 TIP입니다. 두 벡터의 각도 관계를 바꾸면 끝점의 곡선도 바뀌어집니다.</p>
+
+          <div class="concept-grid">
+            <article><code>ψ = +φ</code><strong>같이 회전</strong><p>두 벡터가 한 벡터처럼 움직여 원을 그립니다.</p></article>
+            <article><code>ψ = −φ</code><strong>반대로 회전</strong><p>반축 r₁+r₂, |r₁−r₂|인 정확한 타원이 됩니다.</p></article>
+            <article><code>r₁ = r₂, ψ = −φ</code><strong>Cardan 직선</strong><p>타원의 한 반축이 0이 되어 정확한 직선이 됩니다.</p></article>
+          </div>
+
+          <div class="callout orange-callout">
+            <strong>이 단계는 아직 2 DOF입니다.</strong>
+            <p>φ와 ψ를 따로 바꾸고 있으므로 모터가 두 개 필요합니다. 이제 모터 하나로 만들기 위해 ψ=f(φ)로 묶어야 합니다.</p>
+          </div>
+        </div>
+
+        <div class="visual-column sticky-visual">
+          <article class="card dark-card diagram-card">
+            <div class="card-head">
+              <div><span class="mini-label">VECTOR LAB</span><strong>각도비 k가 곡선을 바꾸는 방법</strong></div>
+              <button class="icon-button" id="vectorPlay" type="button" aria-label="벡터 애니메이션 재생 또는 정지">❚❚</button>
+            </div>
+            <svg id="vectorDiagram" class="diagram" viewBox="0 0 680 440" role="img" aria-label="두 회전벡터의 합이 그리는 곡선"></svg>
+            <div class="preset-row" id="vectorPresets">
+              <button type="button" data-k="1">k = +1 · 원</button>
+              <button type="button" data-k="-1" class="active">k = −1 · 타원</button>
+              <button type="button" data-k="-0.35">k = −0.35 · 복합</button>
+            </div>
+            <label class="range-row dark"><span>ψ = kφ</span><input id="vectorK" type="range" min="-150" max="150" value="-100"><output id="vectorKOut">−1.00</output></label>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter content-grid reverse" id="ik" data-chapter="ik">
+        <div class="story">
+          <p class="step-no">04 · EXACT INVERSE KINEMATICS</p>
+          <h2>Q–K를 만들기 전에,<br>이상적인 각도를 먼저 구합니다.</h2>
+          <p>목표점 P와 기구 중심 C₀가 주어지면, 다음은 중심 C₀의 반지름 r₁ 원과 목표점 P의 반지름 r₂ 원의 교점 문제입니다.</p>
+
+          <div class="derivation">
+            <div><span>1</span><p><code>v = P − C₀, d = |v|</code><small>목표점을 중심 기준 벡터로 바꾼다.</small></p></div>
+            <div><span>2</span><p><code>cos α = (d²+r₁²−r₂²)/(2dr₁)</code><small>r₁, r₂, d 삼각형에 코사인 법칙을 쓴다.</small></p></div>
+            <div><span>3</span><p><code>φ = atan2(vz,vx) ± α</code><small>두 팔꿈치 분기 중 행정 내내 같은 쪽을 쓴다.</small></p></div>
+            <div><span>4</span><p><code>ψ = atan2(v − r₁e(φ))</code><small>남은 r₂ 벡터의 방향을 읽는다.</small></p></div>
+          </div>
+
+          <p>목표 경로의 모든 점에서 이 계산을 반복하면 오차가 없는 <strong>ψ<sub>required</sub>(φ)</strong>를 얻습니다. 여기까지는 Q, K, L이 한 번도 등장하지 않습니다.</p>
+
+          <div class="callout green-callout">
+            <strong>이것이 함수 생성의 “정답지”입니다.</strong>
+            <p>이제 실제 링크가 이 각도 관계를 얼마나 잘 따라하는지 비교하면 됩니다.</p>
+          </div>
+        </div>
+
+        <div class="visual-column sticky-visual">
+          <article class="card diagram-card">
+            <div class="card-head">
+              <div><span class="mini-label">TWO-CIRCLE IK</span><strong>목표점이 요구하는 φ, ψ</strong></div>
+              <div class="branch-toggle" id="ikBranch"><button type="button" data-branch="-1" class="active">분기 −</button><button type="button" data-branch="1">분기 +</button></div>
+            </div>
+            <svg id="ikDiagram" class="diagram" viewBox="0 0 680 410" role="img" aria-label="두 원의 교점으로 풀어낸 2링크 역기구학"></svg>
+            <label class="range-row"><span>목표 경로 위치</span><input id="ikSlider" type="range" min="0" max="120" value="0"><output id="ikProgress">0%</output></label>
+            <div class="metric-row four">
+              <span><small>d</small><strong id="ikD">—</strong></span>
+              <span><small>α</small><strong id="ikAlpha">—</strong></span>
+              <span><small>필요 φ</small><strong id="ikPhi">—</strong></span>
+              <span><small>필요 ψ</small><strong id="ikPsi">—</strong></span>
+            </div>
+          </article>
+
+          <article class="card plot-card">
+            <div class="card-head"><div><span class="mini-label">THE ANSWER CURVE</span><strong>ψ<sub>required</sub>(φ)</strong></div><span class="status-chip success">근사 없음</span></div>
+            <svg id="requiredPlot" class="diagram small-plot" viewBox="0 0 680 230" role="img" aria-label="목표 경로에서 구한 이상적 파이와 프시의 관계"></svg>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter content-grid" id="closure" data-chapter="closure">
+        <div class="story">
+          <p class="step-no">05 · CLOSED-LOOP FUNCTION GENERATOR</p>
+          <h2>Q–K 링크는 경로보다<br>“각도 함수”를 만듭니다.</h2>
+          <p>K는 2단 크랭크에 붙은 핀이고, Q는 지면 고정점입니다. 둘을 길이 L인 막대로 연결하면 다음 하나의 조건이 생깁니다.</p>
+          <div class="center-equation violet-equation">K = V₂ + ρe(ψ+β), |K−Q| = L</div>
+          <p>원래 독립이던 φ, ψ에 스칼라 조건 하나가 추가되어 2 DOF가 1 DOF가 됩니다. φ를 정하면 ψ는 삼각형을 닫을 수 있는 각도로 강제됩니다.</p>
+
+          <div class="formula-card closure-formula">
+            <span>Q–V₂–K 삼각형</span>
+            <code>C = (L²−ρ²−s²)/(2ρs)</code>
+            <code class="big-code">ψ = σ − β + χ cos⁻¹(C)</code>
+            <small>s = |V₂−Q|, σ = atan2(V₂−Q), χ = ±1</small>
+          </div>
+
+          <p>V₂가 φ에 따라 이동하므로 s와 σ도 φ의 함수입니다. 결국 Q, ρ, β, L을 고르는 것은 다음 곡선의 모양을 고르는 일입니다.</p>
+          <div class="compare-equation"><span>ψ<sub>linkage</sub>(φ; Q,ρ,β,L)</span><strong>≈</strong><span>ψ<sub>required</sub>(φ)</span></div>
+        </div>
+
+        <div class="visual-column sticky-visual">
+          <article class="card dark-card diagram-card">
+            <div class="card-head">
+              <div><span class="mini-label">CLOSURE TRIANGLE</span><strong>Q · V₂ · K가 만드는 ψ</strong></div>
+              <div class="branch-toggle dark" id="closureBranch"><button type="button" data-branch="1" class="active">χ = +1</button><button type="button" data-branch="-1">χ = −1</button></div>
+            </div>
+            <svg id="closureDiagram" class="diagram" viewBox="0 0 680 430" role="img" aria-label="Q V2 K 삼각형과 두 조립 분기"></svg>
+            <label class="range-row dark"><span>입력 φ</span><input id="closureSlider" type="range" min="0" max="240" value="0"><output id="closurePhi">—</output></label>
+            <div class="metric-row four dark-metrics">
+              <span><small>s</small><strong id="closureS">—</strong></span>
+              <span><small>σ</small><strong id="closureSigma">—</strong></span>
+              <span><small>자동 ψ</small><strong id="closurePsi">—</strong></span>
+              <span><small>사점 여유</small><strong id="closureMargin">—</strong></span>
+            </div>
+          </article>
+
+          <article class="card plot-card">
+            <div class="card-head"><div><span class="mini-label">FUNCTION GENERATION</span><strong>필요한 함수 vs 링크가 만든 함수</strong></div></div>
+            <svg id="functionPlot" class="diagram small-plot" viewBox="0 0 680 240" role="img" aria-label="이상적인 각도 함수와 폐루프 링크의 각도 함수 비교"></svg>
+            <div class="plot-legend"><span><i class="line ideal-line"></i>ψ<sub>required</sub></span><span><i class="line actual-line"></i>ψ<sub>linkage</sub></span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter" id="frame" data-chapter="frame">
+        <div class="section-intro narrow">
+          <p class="step-no">06 · ONE FRAME, START TO FINISH</p>
+          <h2>입력각 하나가 TIP 좌표가 되기까지</h2>
+          <p>스라이더를 움직이면 실제 <code>solvePose()</code>와 같은 순서로 모든 값을 다시 계산합니다. 시작 자세에서는 φ=139.25° 하나만 주어지고 ψ≈197.72°가 자동으로 결정됩니다.</p>
+        </div>
+
+        <div class="frame-workbench card">
+          <div class="frame-stage">
+            <div class="card-head">
+              <div><span class="mini-label">FORWARD SOLVER</span><strong>현재 프레임의 기구</strong></div>
+              <button class="button small" id="framePlay" type="button">▶ 재생</button>
+            </div>
+            <svg id="frameDiagram" class="diagram" viewBox="0 0 720 560" role="img" aria-label="현재 입력각의 전체 기구 자세"></svg>
+            <label class="range-row prominent"><span>행정 위치</span><input id="frameSlider" type="range" min="0" max="240" value="0"><output id="framePercent">0%</output></label>
+          </div>
+
+          <ol class="solver-timeline" id="solverTimeline">
+            <li><span>01</span><div><small>INPUT</small><strong>φ</strong><code id="calcPhi">—</code></div></li>
+            <li><span>02</span><div><small>STAGE 1</small><strong>P₁ = O₁ + r₁e(φ)</strong><code id="calcP1">—</code></div></li>
+            <li><span>03</span><div><small>PLATFORM OFFSET</small><strong>V₂ = P₁ + m</strong><code id="calcV2">—</code></div></li>
+            <li><span>04</span><div><small>LOOP CLOSURE</small><strong>ψ = σ−β+χcos⁻¹(C)</strong><code id="calcPsi">—</code></div></li>
+            <li><span>05</span><div><small>STAGE 2</small><strong>W = V₂ + r₂e(ψ)</strong><code id="calcW">—</code></div></li>
+            <li class="result"><span>06</span><div><small>OUTPUT</small><strong>TIP = W + c</strong><code id="calcTip">—</code></div></li>
+          </ol>
+        </div>
+
+        <div class="insight-row">
+          <article><span>1단 기여</span><strong>(+22.71, −4.62) mm</strong><p>주로 전진하지만 원호 때문에 처집니다.</p></article>
+          <article><span>2단 기여</span><strong>(−2.58, +14.43) mm</strong><p>조금 당기면서 크게 들어 올립니다.</p></article>
+          <article class="sum"><span>두 벡터의 합</span><strong>(+20.14, +9.81) mm</strong><p>목표 행정 20 × 10 mm에 가깝습니다.</p></article>
+        </div>
+      </section>
+
+      <section class="chapter" id="meaning" data-chapter="meaning">
+        <div class="section-intro">
+          <p class="step-no">07 · WHAT THE RESULT MEANS</p>
+          <h2>오차가 생기는 곳과,<br>이 모델이 보장하지 않는 것</h2>
+        </div>
+
+        <div class="result-grid">
+          <article class="card media-card">
+            <div class="card-head"><div><span class="mini-label">EXISTING RESULT ASSET</span><strong>최적화된 기구 전체 운동</strong></div><span class="status-chip">GIF</span></div>
+            <img src="assets/straight_ellipse_link_motion.gif" alt="2단 병진 링크가 직선 진입 후 상승하는 애니메이션">
+          </article>
+          <article class="card media-card">
+            <div class="card-head"><div><span class="mini-label">PATH ERROR</span><strong>목표 경로와 실제 경로</strong></div><span class="status-chip warn">MAX 0.291 mm</span></div>
+            <img src="assets/straight_ellipse_path_comparison.png" alt="목표 경로와 실제 링크 경로 및 오차 그래프">
+          </article>
+        </div>
+
+        <div class="conclusion-grid">
+          <article class="conclusion-card">
+            <span class="conclusion-no">1</span>
+            <h3>평행사변형은 자세를 분리합니다.</h3>
+            <p>φ와 ψ는 돌아가지만 출력 플랫폼과 TIP의 방향은 이상적으로 0.000° 변합니다.</p>
+          </article>
+          <article class="conclusion-card">
+            <span class="conclusion-no">2</span>
+            <h3>경로는 두 회전벡터의 합입니다.</h3>
+            <p>하나면 원이지만 둘의 각도 관계를 바꾸면 직선과 타원에 가까운 곡률을 만들 수 있습니다.</p>
+          </article>
+          <article class="conclusion-card">
+            <span class="conclusion-no">3</span>
+            <h3>Q–K는 각도 함수 생성기입니다.</h3>
+            <p>필요한 ψ(φ)와 실제 링크의 ψ(φ) 차이가 바로 TIP 경로 오차의 본질입니다.</p>
+          </article>
+        </div>
+
+        <div class="limits-card">
+          <div>
+            <span class="mini-label">CURRENT VERDICT</span>
+            <h3>기구학은 설명되었지만, 제작 설계는 아직 완료가 아닙니다.</h3>
+          </div>
+          <ul>
+            <li><span>최대 위치 오차</span><strong class="bad">0.291 mm · 기준 0.20 mm 미달</strong></li>
+            <li><span>손끝 자세 변화</span><strong class="good">0.000° · 구조적 통과</strong></li>
+            <li><span>최소 사점 여유</span><strong class="warn-text">0.085 · 하한 통과, 권장 미달</strong></li>
+            <li><span>이 페이지가 아직 보지 않는 것</span><strong>3D 간섭 · 강성 · 토크 · 백래시</strong></li>
+          </ul>
+        </div>
+      </section>
+
+      <footer>
+        <div><strong>Scoop Linkage Modeling Walkthrough</strong><p>기존 <code>mechanism.js</code>의 평면 중심선 기구학과 최적화 결과 자산을 사용합니다.</p></div>
+        <div class="footer-links"><a href="mechanism_explained.html">수식 중심 상세 해설</a><a href="index.html">드래그 편집기</a></div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="mechanism.js"></script>
+  <script src="modeling_walkthrough.js"></script>
+</body>
+</html>

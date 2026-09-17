@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scoop Linkage Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">KINEMATIC WORKBENCH / LOCAL</p>
+      <h1>Scoop Linkage <span>Studio</span></h1>
+    </div>
+    <div class="top-actions">
+      <a class="button quiet" href="modeling_walkthrough.html">모델링 워크스루</a>
+      <button id="baselineButton" class="quiet">현재를 비교 기준으로</button>
+      <button id="resetButton" class="quiet">초기 설계</button>
+      <button id="exportButton" class="primary">JSON 내보내기</button>
+      <label class="button quiet" for="importInput">불러오기</label>
+      <input id="importInput" type="file" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="stage-card">
+      <div class="stage-toolbar">
+        <div class="status-line">
+          <span id="statusDot" class="status-dot"></span>
+          <strong id="statusText">계산 준비</strong>
+          <span id="selectedText">점을 드래그해 형상을 바꿔보세요</span>
+        </div>
+        <div class="stage-actions">
+          <button id="fitButton" class="icon-button" title="전체 보기">화면 맞춤</button>
+          <button id="playButton" class="icon-button" title="재생/정지">▶ 재생</button>
+        </div>
+      </div>
+
+      <div id="canvasWrap" class="canvas-wrap">
+        <svg id="mechanismCanvas" viewBox="-36 -116 150 130" role="img" aria-label="드래그 가능한 기구학 편집기">
+          <defs>
+            <pattern id="minorGrid" width="5" height="5" patternUnits="userSpaceOnUse">
+              <path d="M 5 0 L 0 0 0 5" fill="none" stroke="#263349" stroke-width="0.18"/>
+            </pattern>
+            <pattern id="majorGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+              <rect width="25" height="25" fill="url(#minorGrid)"/>
+              <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#33455f" stroke-width="0.32"/>
+            </pattern>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.8" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <rect id="gridRect" x="-1000" y="-1000" width="2000" height="2000" fill="url(#majorGrid)"/>
+          <g id="world" transform="scale(1,-1)">
+            <line id="groundLine" x1="-1000" y1="0" x2="1000" y2="0" class="ground"/>
+            <path id="targetPath" class="path target"/>
+            <path id="baselinePath" class="path baseline"/>
+            <path id="tipPath" class="path actual"/>
+            <g id="mechanismLinks"></g>
+            <g id="jointHandles"></g>
+          </g>
+          <g class="legend" transform="translate(-30,-110)">
+            <rect width="52" height="18" rx="3"/>
+            <line x1="5" y1="5" x2="14" y2="5" class="legend-target"/>
+            <text x="17" y="6.5">목표</text>
+            <line x1="5" y1="10" x2="14" y2="10" class="legend-baseline"/>
+            <text x="17" y="11.5">비교 기준</text>
+            <line x1="5" y1="15" x2="14" y2="15" class="legend-actual"/>
+            <text x="17" y="16.5">현재 궤적</text>
+          </g>
+        </svg>
+        <div class="canvas-hint">핸들 드래그 · 빈 공간 드래그로 이동 · 휠로 확대</div>
+      </div>
+
+      <div class="timeline">
+        <button id="stepBackButton" aria-label="이전 프레임">−</button>
+        <input id="frameSlider" type="range" min="0" max="240" value="0">
+        <button id="stepForwardButton" aria-label="다음 프레임">＋</button>
+        <output id="angleOutput">139.25°</output>
+      </div>
+    </section>
+
+    <aside class="inspector">
+      <section class="panel intro-panel">
+        <p class="panel-kicker">LIVE SOLVER</p>
+        <h2>설계 상태</h2>
+        <div class="metric-grid">
+          <article><span>유효 자세</span><strong id="validMetric">—</strong></article>
+          <article><span>사점 여유</span><strong id="marginMetric">—</strong></article>
+          <article><span>궤적 폭</span><strong id="widthMetric">—</strong></article>
+          <article><span>궤적 높이</span><strong id="heightMetric">—</strong></article>
+        </div>
+        <p id="warningText" class="warning-text">폐루프 계산 결과가 여기에 표시됩니다.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div><p class="panel-kicker">INPUT</p><h2>구동 범위</h2></div>
+        </div>
+        <div class="field-grid">
+          <label>시작각 <span>deg</span><input id="startAngleInput" type="number" step="0.25"></label>
+          <label>종료각 <span>deg</span><input id="endAngleInput" type="number" step="0.25"></label>
+          <label>계산 점 <span>개</span><input id="samplesInput" type="number" min="31" max="721" step="10"></label>
+          <label>재생 속도 <span>fps</span><input id="fpsInput" type="number" min="1" max="60" step="1" value="24"></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div><p class="panel-kicker">GEOMETRY</p><h2>링크 치수</h2></div>
+          <button id="copyButton" class="text-button">표 복사</button>
+        </div>
+        <div id="lengthTable" class="length-table"></div>
+      </section>
+
+      <section class="panel guide-panel">
+        <p class="panel-kicker">DRAG MAP</p>
+        <h2>점별 편집 기능</h2>
+        <dl>
+          <div><dt>O1 · Q</dt><dd>지면 고정축 위치</dd></div>
+          <div><dt>P1</dt><dd>1단 길이와 위상</dd></div>
+          <div><dt>V2</dt><dd>플랫폼 위 2단 위치</dd></div>
+          <div><dt>K</dt><dd>연결 핀 반경·위상·링크</dd></div>
+          <div><dt>W</dt><dd>2단 길이와 위상 관계</dd></div>
+          <div><dt>TIP</dt><dd>손끝 오프셋</dd></div>
+          <div><dt>…b</dt><dd>평행사변형 폭</dd></div>
+        </dl>
+      </section>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="mechanism.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
