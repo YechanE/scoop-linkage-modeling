@@ -15,6 +15,9 @@
 브라우저에서 `modeling_walkthrough.html`을 열면 목표 경로 → 역기구학 →
 Q–K 폐루프 → 실제 TIP 경로 순서의 그림·애니메이션 학습 페이지가 열린다.
 
+`redesign_explained.html`은 기존 2단 평행사변형이 toggle에서 자세 강성을 잃는 원인과
+ground 기준 직교 XY 가이드 재설계, CAD/OpenRadioss 검증 결과를 동기화된 애니메이션으로 비교한다.
+
 ## 편집 규칙
 
 - `O1`, `Q`: 두 고정축 위치를 바꾼다.

@@ -86,6 +86,11 @@ h1 .thin{font-weight:400; color:var(--muted)}
 .fact dd{margin:0; font-family:var(--mono); font-size:19px; font-weight:500; letter-spacing:-.01em;
   font-variant-numeric:tabular-nums}
 .fact dd .u{font-size:12px; color:var(--muted); font-weight:400}
+.revision-note{margin-top:24px; max-width:70ch; border:1px solid color-mix(in srgb,var(--bad) 42%,var(--line));
+  border-left:3px solid var(--bad); border-radius:3px; padding:14px 17px; background:var(--surface)}
+.revision-note strong{display:block; color:var(--bad); font-size:12px; letter-spacing:.05em; margin-bottom:5px}
+.revision-note p{margin:0; color:var(--ink-2); font-size:14px}
+.revision-note a{color:var(--accent-2); font-weight:700; text-underline-offset:3px}
 
 /* ---------- nav ---------- */
 .railnav{
@@ -296,6 +301,10 @@ footer code{font-family:var(--mono); font-size:11.5px; background:var(--surface-
       <strong>왜 하필 지금 값이 되었는지</strong>까지 순서대로 따라간다.
       슬라이더를 움직이면 식의 값과 그림이 함께 바뀐다.
     </p>
+    <div class="revision-note" role="note">
+      <strong>검증 정정 · 이상 기구학과 실제 동역학은 다릅니다</strong>
+      <p>이 페이지의 0° 판정은 링크를 완전 강체·무간극 조인트로 본 이상 조건입니다. 기존 2단 평행사변형은 경로 중 두 번의 toggle을 지나며, 유한 조인트 강성에서는 자세 구속이 약해집니다. 원인, 변경 구조, CAD와 OpenRadioss 검증은 <a href="redesign_explained.html">Tip 재설계 분석</a>에서 확인하세요.</p>
+    </div>
     <dl class="facts">
       <div class="fact"><dt>목표 경로 길이</dt><dd>27.11<span class="u"> mm</span></dd></div>
       <div class="fact"><dt>자유도</dt><dd>1<span class="u"> DOF</span></dd></div>
