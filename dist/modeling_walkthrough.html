@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="2단 병진 스쿠핑 링크의 목표 경로, 역기구학, 폐루프 함수 생성을 그림과 애니메이션으로 설명하는 학습 페이지">
   <title>2단 병진 링크 · 모델링 워크스루</title>
-  <link rel="stylesheet" href="modeling_walkthrough.css">
+  <link rel="stylesheet" href="modeling_walkthrough.css?v=20260919">
 </head>
 <body>
   <div class="reading-progress" aria-hidden="true"><span id="readingProgress"></span></div>
@@ -47,46 +47,47 @@
     <main>
       <section class="hero chapter" id="overview" data-chapter="overview">
         <div class="hero-copy">
-          <p class="eyebrow">START HERE · 두 문제를 분리하면 전체가 보입니다</p>
-          <h1>원하는 경로를 먼저 풀고,<br><span>그 각도 관계를 링크로 만듭니다.</span></h1>
+          <p class="eyebrow">START HERE · 지금 이해한 흐름에서 출발합니다</p>
+          <h1>자세는 평행사변형이 지키고,<br><span>경로는 두 각의 관계가 만듭니다.</span></h1>
           <p class="hero-lede">
-            이 기구의 모델링은 한 번에 풀는 문제가 아닙니다.
-            먼저 모터가 두 개라고 가정하고 목표 경로가 요구하는
-            <strong>φ, ψ를 정확히 계산</strong>합니다. 그런 다음 <strong>Q–K 링크</strong>로
-            ψ가 φ에 따라 저절로 나오게 만듭니다.
+            평행사변형 하나는 출력부의 <strong>방향을 유지</strong>하지만 끝점은 원을 그립니다.
+            그래서 두 단을 이어 두 회전벡터를 더하고, 목표 궤적이 요구하는
+            <strong>φ와 ψ의 관계</strong>를 먼저 찾습니다. 마지막으로 <strong>Q–K 링크</strong>가
+            두 각을 묶어 모터 하나로 움직이게 합니다.
           </p>
 
-          <div class="two-problems" aria-label="두 단계 요약">
-            <article>
-              <span class="phase-tag ideal">IDEAL · 2 DOF</span>
-              <strong>경로 역기구학</strong>
-              <p>목표 TIP 점마다 필요한 φ와 ψ를 구한다.</p>
-            </article>
-            <div class="handoff" aria-hidden="true"><span>ψ<sub>required</sub>(φ)</span>→</div>
-            <article>
-              <span class="phase-tag real">REAL · 1 DOF</span>
-              <strong>폐루프 링크 합성</strong>
-              <p>Q–K의 길이 구속으로 위 각도 함수를 근사한다.</p>
-            </article>
+          <div class="ratio-correction">
+            <span>고정 각도비 <code>ψ = kφ</code></span>
+            <b>특수한 경우</b>
+            <i aria-hidden="true">→</i>
+            <span>각도 함수 <code>ψ = f(φ)</code></span>
+            <b>일반적인 목표 궤적</b>
           </div>
         </div>
 
-        <div class="hero-visual card dark-card">
+        <div class="hero-visual card dark-card mental-lab">
           <div class="card-head">
-            <div><span class="mini-label">LIVE MECHANISM</span><strong>최적화된 실제 기구</strong></div>
-            <button class="icon-button" id="heroPlay" type="button" aria-label="애니메이션 재생 또는 정지">❚❚</button>
+            <div><span class="mini-label" id="mentalStepBadge">STEP 1 · ORIENTATION</span><strong id="mentalStepTitle">평행사변형은 자세를 지킵니다</strong></div>
+            <button class="icon-button" id="mentalPlay" type="button" aria-label="애니메이션 재생 또는 정지">❚❚</button>
           </div>
-          <svg id="heroMechanism" class="diagram hero-svg" viewBox="0 0 680 500" role="img" aria-label="실제 2단 병진 링크가 운동하며 TIP 경로를 그리는 애니메이션"></svg>
-          <div class="hero-readouts">
-            <span><small>입력 φ</small><strong id="heroPhi">—</strong></span>
-            <span><small>자동 ψ</small><strong id="heroPsi">—</strong></span>
-            <span><small>TIP</small><strong id="heroTip">—</strong></span>
+          <svg id="mentalModelDiagram" class="diagram mental-svg" viewBox="0 0 680 430" role="img" aria-label="평행사변형에서 1자유도 함수 생성까지 여섯 단계로 보여주는 애니메이션"></svg>
+          <div class="mental-caption">
+            <span id="mentalStepEquation">출력 막대 ∥ 고정 막대</span>
+            <p id="mentalStepDescription">입력 링크가 회전해도 출력 플랫폼은 기준선과 평행한 방향을 유지합니다.</p>
+          </div>
+          <div class="mental-steps" id="mentalSteps" aria-label="개념 단계 선택">
+            <button type="button" data-mental-step="1" class="active"><span>1</span>자세 고정</button>
+            <button type="button" data-mental-step="2"><span>2</span>한 단 = 원</button>
+            <button type="button" data-mental-step="3"><span>3</span>두 단 = 합</button>
+            <button type="button" data-mental-step="4"><span>4</span>궤적 → 두 각</button>
+            <button type="button" data-mental-step="5"><span>5</span>ψ = f(φ)</button>
+            <button type="button" data-mental-step="6"><span>6</span>Q–K · 1 DOF</button>
           </div>
         </div>
       </section>
 
       <div class="logic-strip" aria-label="전체 계산 흐름">
-        <span>Desired path</span><i>→</i><span>exact IK</span><i>→</i><span>ψ<sub>required</sub>(φ)</span><i>→</i><span>Q–K synthesis</span><i>→</i><span>actual TIP</span>
+        <span>자세 유지</span><i>→</i><span>1단은 원</span><i>→</i><span>2단 벡터합</span><i>→</i><span>목표점마다 φ, ψ</span><i>→</i><span>ψ=f(φ)</span><i>→</i><span>Q–K로 1 DOF</span>
       </div>
 
       <section class="chapter content-grid" id="chain" data-chapter="chain">
@@ -187,8 +188,8 @@
           </div>
 
           <div class="callout orange-callout">
-            <strong>이 단계는 아직 2 DOF입니다.</strong>
-            <p>φ와 ψ를 따로 바꾸고 있으므로 모터가 두 개 필요합니다. 이제 모터 하나로 만들기 위해 ψ=f(φ)로 묶어야 합니다.</p>
+            <strong>중요: 각도 “비”는 보통 한 숫자가 아닙니다.</strong>
+            <p><code>ψ=kφ</code>는 원·타원 같은 특수 예제입니다. 임의의 목표 궤적에서는 φ가 변할 때 ψ도 비선형으로 변하므로 관계 전체를 <code>ψ=f(φ)</code>로 저장합니다. 아직은 두 각을 독립적으로 정하는 2 DOF입니다.</p>
           </div>
         </div>
 
@@ -387,6 +388,6 @@
   </div>
 
   <script src="mechanism.js"></script>
-  <script src="modeling_walkthrough.js"></script>
+  <script src="modeling_walkthrough.js?v=20260919"></script>
 </body>
 </html>

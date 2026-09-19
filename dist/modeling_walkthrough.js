@@ -13,7 +13,9 @@
 
   const state = {
     reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    heroPlaying: true,
+    mentalPlaying: true,
+    mentalStep: 1,
+    mentalPhase: 0,
     targetPlaying: true,
     vectorPlaying: true,
     framePlaying: false,
@@ -158,14 +160,6 @@
       label(svg, joints[name], name === "TIP" ? "TIP" : name.replace("1", "₁").replace("2", "₂"), "label", offsets[0], offsets[1]);
     });
     return transform;
-  }
-
-  function drawHero(index) {
-    const pose = STROKE.poses[index];
-    drawMechanism($("heroMechanism"), pose, { width: 680, height: 500, pad: 40, minZ: -8 });
-    $("heroPhi").textContent = `${fmt(deg(pose.phi), 2)}°`;
-    $("heroPsi").textContent = `${fmt(normDeg(deg(pose.psi)), 2)}°`;
-    $("heroTip").textContent = `${fmt(pose.tip.x, 2)}, ${fmt(pose.tip.z, 2)} mm`;
   }
 
   function drawChain() {
@@ -356,6 +350,174 @@
     }));
   }
 
+  const MENTAL_STEPS = {
+    1: {
+      badge: "STEP 1 · ORIENTATION",
+      title: "평행사변형은 자세를 지킵니다",
+      equation: "출력 막대 ∥ 고정 막대",
+      description: "입력 링크가 회전해도 출력 플랫폼은 기준선과 평행한 방향을 유지합니다. 여기서 유지되는 것은 끝점의 경로가 아니라 출력부의 자세입니다."
+    },
+    2: {
+      badge: "STEP 2 · ONE STAGE",
+      title: "한 단의 끝점은 원을 그립니다",
+      equation: "P₁ = O₁ + r₁e(φ)",
+      description: "막대 길이 r₁이 고정이고 O₁을 중심으로 φ만 변하므로, P₁까지 거리는 언제나 r₁입니다. 그래서 궤적은 원 하나뿐입니다."
+    },
+    3: {
+      badge: "STEP 3 · TWO STAGES",
+      title: "두 원운동을 벡터로 더합니다",
+      equation: "TIP = C₀ + r₁e(φ) + r₂e(ψ)",
+      description: "두 번째 회전벡터를 첫 번째 끝에 붙이면 TIP은 원이 아닌 곡선을 만들 수 있습니다. 곡선의 모양은 φ와 ψ가 함께 변하는 법에 달려 있습니다."
+    },
+    4: {
+      badge: "STEP 4 · EXACT IK",
+      title: "목표점마다 필요한 두 각을 풉니다",
+      equation: "목표점 P → (φ, ψ)",
+      description: "이 단계에서는 잠시 모터가 두 개라고 생각합니다. 목표 궤적의 각 점 P마다 두 원의 교점을 풀어 정확한 φ와 ψ를 얻습니다."
+    },
+    5: {
+      badge: "STEP 5 · ANSWER FUNCTION",
+      title: "점들을 모으면 각도 함수가 됩니다",
+      equation: "ψrequired = f(φ)",
+      description: "경로 전체에서 구한 (φ,ψ) 쌍을 그리면 정답 곡선이 생깁니다. 일반적으로 기울기가 계속 변하므로 하나의 고정 각도비 k가 아닙니다."
+    },
+    6: {
+      badge: "STEP 6 · ONE DOF",
+      title: "Q–K 링크가 두 각을 기계적으로 묶습니다",
+      equation: "|K−Q| = L  ⇒  ψlinkage(φ) ≈ ψrequired(φ)",
+      description: "고정점 Q와 핀 K를 길이 L인 막대로 잇습니다. 이제 입력 φ 하나가 정해지면 삼각형을 닫는 ψ가 자동으로 정해져 1 DOF가 됩니다."
+    }
+  };
+
+  function setMentalStep(step) {
+    state.mentalStep = clamp(Number(step), 1, 6);
+    const copy = MENTAL_STEPS[state.mentalStep];
+    $("mentalStepBadge").textContent = copy.badge;
+    $("mentalStepTitle").textContent = copy.title;
+    $("mentalStepEquation").textContent = copy.equation;
+    $("mentalStepDescription").textContent = copy.description;
+    $("mentalSteps").querySelectorAll("button[data-mental-step]").forEach(button => {
+      button.classList.toggle("active", Number(button.dataset.mentalStep) === state.mentalStep);
+    });
+    drawMentalModel();
+  }
+
+  function drawMentalModel() {
+    const svg = $("mentalModelDiagram");
+    const width = 680;
+    const height = 430;
+    const theta = state.mentalPhase % TAU;
+    clear(svg);
+    addGrid(svg, width, height);
+    addArrowDefs(svg);
+
+    if (state.mentalStep === 1) {
+      const angle = .22 + .72 * (.5 + .5 * Math.sin(theta));
+      const a = { x: 170, y: 305 };
+      const b = { x: 310, y: 305 };
+      const shift = { x: 145 * Math.cos(angle), y: -145 * Math.sin(angle) };
+      const c = { x: a.x + shift.x, y: a.y + shift.y };
+      const d = { x: b.x + shift.x, y: b.y + shift.y };
+      line(svg, a, b, "platform-link");
+      line(svg, a, c, "stage1-link");
+      line(svg, b, d, "stage1-link");
+      line(svg, c, d, "tip-link");
+      drawFixed(svg, a);
+      drawFixed(svg, b);
+      [c, d].forEach(point => circle(svg, point, 6, "joint green"));
+      line(svg, { x: a.x + 48, y: a.y - 12 }, { x: a.x + 82, y: a.y - 12 }, "parallel-mark");
+      line(svg, { x: c.x + 48, y: c.y - 12 }, { x: c.x + 82, y: c.y - 12 }, "parallel-mark");
+      label(svg, { x: (c.x + d.x) / 2, y: c.y }, "출력 플랫폼 · 항상 수평", "guide-text", 0, -24, "middle");
+      label(svg, { x: 340, y: 365 }, "회전하는 링크 ≠ 회전하는 출력부", "guide-subtext", 0, 0, "middle");
+      return;
+    }
+
+    if (state.mentalStep === 2) {
+      const center = { x: 330, y: 215 };
+      const radius = 125;
+      const tip = { x: center.x + radius * Math.cos(theta), y: center.y - radius * Math.sin(theta) };
+      circle(svg, center, radius, "construction-circle");
+      line(svg, center, tip, "stage1-link", { "marker-end": "url(#arrow-blue)" });
+      circle(svg, center, 7, "joint blue");
+      circle(svg, tip, 8, "joint green");
+      label(svg, center, "O₁", "label", 10, 20);
+      label(svg, tip, "P₁", "label", 10, -10);
+      label(svg, { x: 330, y: 376 }, "|O₁P₁| = r₁ (항상 일정)  →  원", "guide-text", 0, 0, "middle");
+      return;
+    }
+
+    if (state.mentalStep === 3) {
+      const base = { x: 335, y: 215 };
+      const r1 = 128;
+      const r2 = 78;
+      const curve = [];
+      for (let i = 0; i <= 180; i += 1) {
+        const a = i / 180 * TAU;
+        curve.push({ x: base.x + r1 * Math.cos(a) + r2 * Math.cos(-a), y: base.y - r1 * Math.sin(a) - r2 * Math.sin(-a) });
+      }
+      const elbow = { x: base.x + r1 * Math.cos(theta), y: base.y - r1 * Math.sin(theta) };
+      const tip = { x: elbow.x + r2 * Math.cos(-theta), y: elbow.y - r2 * Math.sin(-theta) };
+      path(svg, curve, "actual-path");
+      line(svg, base, elbow, "vector-1", { "marker-end": "url(#arrow-blue)" });
+      line(svg, elbow, tip, "vector-2", { "marker-end": "url(#arrow-orange)" });
+      circle(svg, base, 6, "joint");
+      circle(svg, elbow, 6, "joint blue");
+      circle(svg, tip, 8, "joint green");
+      label(svg, { x: (base.x + elbow.x) / 2, y: (base.y + elbow.y) / 2 }, "φ", "label", 4, -10);
+      label(svg, { x: (elbow.x + tip.x) / 2, y: (elbow.y + tip.y) / 2 }, "ψ", "label", 4, -10);
+      label(svg, { x: 340, y: 382 }, "파란 벡터 + 주황 벡터 = 원이 아닌 TIP 경로", "guide-text", 0, 0, "middle");
+      return;
+    }
+
+    if (state.mentalStep === 4) {
+      const index = Math.floor(theta / TAU * (TARGET.length - 1));
+      const solution = ikSolve(TARGET[index], -1);
+      const bounds = [
+        ...TARGET,
+        { x: solution.C0.x - P.r1, z: solution.C0.z - P.r1 },
+        { x: solution.C0.x + P.r1, z: solution.C0.z + P.r1 }
+      ];
+      const transform = makeTransform(bounds, width, height, 58);
+      const c = transform(solution.C0);
+      const e = transform(solution.elbow);
+      const p = transform(solution.point);
+      path(svg, TARGET.map(transform), "target-path");
+      line(svg, c, e, "stage1-link");
+      line(svg, e, p, "stage2-link");
+      circle(svg, c, 7, "joint blue");
+      circle(svg, e, 6, "joint violet");
+      circle(svg, p, 8, "joint red");
+      label(svg, c, "C₀", "label", 10, -10);
+      label(svg, e, `φ ${fmt(normDeg(deg(solution.phi)), 1)}°`, "label", 10, -10);
+      label(svg, p, `P  ·  ψ ${fmt(normDeg(deg(solution.psi)), 1)}°`, "label", 10, -12);
+      label(svg, { x: 340, y: 397 }, "빨간 목표점을 하나 고르면 필요한 φ와 ψ가 계산됩니다", "guide-text", 0, 0, "middle");
+      return;
+    }
+
+    if (state.mentalStep === 5) {
+      const data = requiredData(-1);
+      const transform = plotTransform([data], width, height, { left: 72, right: 38, top: 54, bottom: 64 }, { minX: 15, maxX: 145, minY: 175, maxY: 207 });
+      drawPlotBase(svg, width, height, transform, "입력 φ [deg]", "필요 ψ [deg]");
+      path(svg, data.map(transform.map), "plot-required");
+      const index = Math.floor(theta / TAU * (data.length - 1));
+      const current = data[index];
+      if (current) {
+        const q = transform.map(current);
+        circle(svg, q, 7, "plot-dot");
+        label(svg, q, `(φ, ψ) = (${fmt(current.x, 1)}°, ${fmt(current.y, 1)}°)`, "label", 12, -12);
+      }
+      S("rect", { x: 430, y: 18, width: 190, height: 38, rx: 11, class: "formula-pill" }, svg);
+      S("text", { x: 525, y: 43, "text-anchor": "middle", class: "formula-text", text: "ψ = f(φ),  k 하나가 아님" }, svg);
+      return;
+    }
+
+    const poseIndex = Math.floor(theta / TAU * (STROKE.poses.length - 1));
+    const pose = STROKE.poses[poseIndex];
+    drawMechanism(svg, pose, { width, height, pad: 38, minZ: -8 });
+    S("rect", { x: 400, y: 18, width: 244, height: 38, rx: 11, class: "formula-pill" }, svg);
+    S("text", { x: 522, y: 43, "text-anchor": "middle", class: "formula-text", text: "φ 입력 1개 → ψ 자동 결정" }, svg);
+  }
+
   function plotTransform(dataSets, width, height, pad = { left: 52, right: 20, top: 20, bottom: 40 }, limits = {}) {
     const all = dataSets.flat();
     const xs = all.map(point => point.x);
@@ -490,9 +652,14 @@
   }
 
   function bindControls() {
-    $("heroPlay").addEventListener("click", () => {
-      state.heroPlaying = !state.heroPlaying;
-      $("heroPlay").textContent = state.heroPlaying ? "❚❚" : "▶";
+    $("mentalPlay").addEventListener("click", () => {
+      state.mentalPlaying = !state.mentalPlaying;
+      $("mentalPlay").textContent = state.mentalPlaying ? "❚❚" : "▶";
+    });
+    $("mentalSteps").addEventListener("click", event => {
+      const button = event.target.closest("button[data-mental-step]");
+      if (!button) return;
+      setMentalStep(Number(button.dataset.mentalStep));
     });
     $("targetPlay").addEventListener("click", () => {
       state.targetPlaying = !state.targetPlaying;
@@ -600,9 +767,9 @@
     const elapsed = Math.min(50, time - state.lastTime || 16);
     state.lastTime = time;
     if (!state.reduceMotion) {
-      if (state.heroPlaying) {
-        const next = Math.floor(time / 45) % STROKE.poses.length;
-        if (next !== state.frameIndex || time < 100) drawHero(next);
+      if (state.mentalPlaying) {
+        state.mentalPhase = (state.mentalPhase + elapsed * .00062) % TAU;
+        drawMentalModel();
       }
       if (state.targetPlaying) {
         const next = Math.floor(time / 55) % TARGET.length;
@@ -621,7 +788,7 @@
   }
 
   function init() {
-    drawHero(0);
+    setMentalStep(1);
     drawChain();
     drawTarget();
     drawVector();
@@ -636,7 +803,7 @@
       document.body.classList.add("reduce-motion");
       $("motionToggle").setAttribute("aria-pressed", "true");
       $("motionToggle").textContent = "운동 켜기";
-      state.heroPlaying = false;
+      state.mentalPlaying = false;
       state.targetPlaying = false;
       state.vectorPlaying = false;
     }

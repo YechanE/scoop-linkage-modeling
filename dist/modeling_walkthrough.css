@@ -179,6 +179,26 @@ main { min-width: 0; padding: 0 clamp(24px, 4.5vw, 76px); }
 .hero-lede { max-width: 720px; color: #4b5869; font-size: 18px; line-height: 1.86; }
 .hero-lede strong { color: var(--ink); }
 
+.ratio-correction {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 14px;
+  align-items: center;
+  max-width: 630px;
+  margin-top: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255,255,255,.78);
+}
+.ratio-correction span { font-size: 14px; font-weight: 800; }
+.ratio-correction code { color: var(--violet); }
+.ratio-correction b { justify-self: end; color: var(--muted); font: 700 10px/1.2 var(--mono); }
+.ratio-correction i { display: none; }
+.ratio-correction span:first-child { color: #7d8999; text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.ratio-correction span:nth-of-type(2) { color: var(--ink); }
+.ratio-correction b:last-child { color: var(--green); }
+
 .two-problems {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -231,6 +251,50 @@ main { min-width: 0; padding: 0 clamp(24px, 4.5vw, 76px); }
 .icon-button.light { border-color: var(--line); background: var(--paper); color: var(--ink); }
 .diagram { display: block; width: 100%; height: auto; }
 .hero-svg { min-height: 420px; }
+.mental-svg { min-height: 370px; }
+.mental-caption {
+  min-height: 96px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.025);
+}
+.mental-caption span { color: #78ead0; font: 750 13px/1.35 var(--mono); }
+.mental-caption p { margin: 7px 0 0; color: #b6c2d1; font-size: 13px; line-height: 1.58; }
+.mental-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.mental-steps button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,.055);
+  color: #9fb0c5;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 750;
+  text-align: left;
+}
+.mental-steps button span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: rgba(255,255,255,.09);
+  font: 700 10px/1 var(--mono);
+}
+.mental-steps button:hover { border-color: rgba(255,255,255,.26); color: white; }
+.mental-steps button.active { border-color: var(--cyan); background: rgba(33,199,199,.14); color: white; }
+.mental-steps button.active span { background: var(--cyan); color: #082c31; }
 .hero-readouts, .metric-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -475,6 +539,12 @@ footer p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 .diagram .plot-actual { fill: none; stroke: var(--cyan); stroke-width: 3; }
 .diagram .plot-dot { fill: var(--navy); stroke: white; stroke-width: 3; }
 .diagram .plot-text { fill: var(--muted); font: 10px/1 var(--mono); }
+.diagram .guide-text { fill: #dce7f3; font-size: 16px; font-weight: 780; }
+.diagram .guide-subtext { fill: #8fa1b7; font-size: 12px; font-weight: 650; }
+.diagram .parallel-mark { stroke: #78ead0; stroke-width: 3; stroke-linecap: round; }
+.diagram .motion-arrow { fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 6 5; }
+.diagram .formula-pill { fill: rgba(124,92,229,.2); stroke: rgba(166,143,243,.55); }
+.diagram .formula-text { fill: #c5b7ff; font: 700 15px/1 var(--mono); }
 .dark-card .diagram .plot-grid { stroke: #26364a; }
 .dark-card .diagram .plot-axis { stroke: #5d7088; }
 .dark-card .diagram .plot-text { fill: #8fa1b7; }
@@ -507,6 +577,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   .hero { padding-top: 36px; }
   .hero h1 { font-size: 38px; }
   .hero-lede { font-size: 16px; }
+  .ratio-correction { grid-template-columns: 1fr auto; }
   .two-problems { grid-template-columns: 1fr; }
   .handoff { min-height: 34px; flex-direction: row; gap: 8px; }
   .handoff span { writing-mode: initial; }
@@ -516,6 +587,8 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   .story h2, .section-intro h2 { font-size: 33px; }
   .story > p:not(.step-no), .section-intro > p:not(.step-no) { font-size: 16px; }
   .diagram-card .diagram, .hero-svg { min-height: 300px; }
+  .mental-svg { min-height: 260px; }
+  .mental-steps { grid-template-columns: repeat(2, 1fr); }
   .card-head { min-height: 62px; padding: 13px 15px; }
   .card-head strong { font-size: 13px; }
   .concept-grid article { grid-template-columns: 1fr; }
