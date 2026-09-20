@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="XM540 스쿠핑 그리퍼의 기존 2단 평행사변형 문제와 XY-guide 재설계를 기구학 애니메이션 및 OpenRadioss 결과로 설명합니다.">
   <title>Tip 자세구속 재설계 · 원인과 변경점</title>
-  <link rel="stylesheet" href="redesign_explained.css">
+  <link rel="stylesheet" href="redesign_explained.css?v=20260920">
 </head>
 <body>
   <header class="topbar">
@@ -86,6 +86,131 @@
           <button type="button" data-angle="-0.889283">2단 toggle</button>
           <button type="button" data-progress="1">끝</button>
         </div>
+      </div>
+    </section>
+
+    <section class="mechanism-explainer" id="how-it-works" aria-labelledby="howTitle">
+      <div class="section-head explainer-head">
+        <div>
+          <p class="eyebrow">WHY 4R + ORTHOGONAL XY GUIDE?</p>
+          <h2 id="howTitle">경로를 만드는 장치와<br>자세를 지키는 장치를 분리해서 봅니다.</h2>
+          <p>재설계가 낯설어 보이는 이유는 4R과 XY guide가 한 덩어리처럼 그려져 있기 때문입니다. 실제 역할은 단순합니다. <strong>4R이 W의 x·y 위치를 만들고</strong>, 두 직선가이드가 그 위치를 따라가면서 <strong>output carrier의 회전을 0°로 구속</strong>합니다.</p>
+        </div>
+        <div class="role-pills" aria-label="기구 역할 요약">
+          <span><b>4R</b> W 경로 생성</span>
+          <i>+</i>
+          <span><b>XY guide</b> 자세 0° 유지</span>
+          <i>=</i>
+          <span class="result"><b>1 DOF</b> 원하는 TIP 운동</span>
+        </div>
+      </div>
+
+      <article class="concept-lab">
+        <div class="concept-lab-head">
+          <div><span id="conceptBadge">STEP 1 · EXTRACT THE PATH</span><strong id="conceptTitle">기존 평행사변형에서 V2의 운동식만 꺼냅니다</strong></div>
+          <button id="conceptPlay" type="button" aria-pressed="true" aria-label="원리 애니메이션 재생 또는 정지">Ⅱ 정지</button>
+        </div>
+        <svg id="conceptMechanism" viewBox="-112 -148 224 158" role="img" aria-label="4R과 직교 XY 가이드가 만들어지는 과정을 여섯 단계로 설명하는 애니메이션"></svg>
+        <div class="concept-caption">
+          <code id="conceptEquation">V₂ = O₁ + a + r₁e(φ) = O′ + r₁e(φ)</code>
+          <p id="conceptDescription">기존 1단 평행사변형에서 P1→V2 오프셋 a는 지면좌표계에서 고정입니다. 따라서 O1을 같은 a만큼 옮긴 O′에 크랭크를 놓으면 V2는 이전과 완전히 같은 원을 그립니다.</p>
+        </div>
+        <div class="concept-steps" id="conceptSteps" aria-label="4R과 XY 가이드 설명 단계">
+          <button type="button" data-concept-step="1" class="active"><span>1</span>V2 식 압축</button>
+          <button type="button" data-concept-step="2"><span>2</span>4R 폐루프</button>
+          <button type="button" data-concept-step="3"><span>3</span>W 경로 생성</button>
+          <button type="button" data-concept-step="4"><span>4</span>X guide</button>
+          <button type="button" data-concept-step="5"><span>5</span>Y guide</button>
+          <button type="button" data-concept-step="6"><span>6</span>전체 결합</button>
+        </div>
+        <div class="concept-readouts" aria-live="polite">
+          <span><small>입력 φ</small><strong id="conceptPhi">—</strong></span>
+          <span><small>4R이 만든 W</small><strong id="conceptW">—</strong></span>
+          <span><small>X carriage</small><strong id="conceptX">—</strong></span>
+          <span><small>Y carriage</small><strong id="conceptY">—</strong></span>
+          <span><small>carrier 각도</small><strong id="conceptCarrierAngle">0.000°</strong></span>
+        </div>
+      </article>
+
+      <div class="derivation-grid">
+        <article class="derivation-panel blue-derivation">
+          <span class="derivation-no">01</span>
+          <p class="eyebrow">WHY O′ APPEARS</p>
+          <h3>첫 평행사변형을 없애도 V₂ 경로는 그대로입니다.</h3>
+          <p>기존 기구에서 <code>a=V₂−P₁</code>는 회전하지 않는 고정 벡터입니다.</p>
+          <div class="math-stack">
+            <code>P₁(φ)=O₁+r₁e(φ)</code>
+            <code>V₂(φ)=P₁(φ)+a</code>
+            <code>V₂(φ)=(O₁+a)+r₁e(φ)</code>
+            <code class="math-result">O′≡O₁+a  ⇒  V₂(φ)=O′+r₁e(φ)</code>
+          </div>
+          <p>즉 새 축 O′는 임의로 고른 점이 아니라, <strong>기존 V₂ 원운동의 정확한 중심</strong>입니다. O′–V₂ 단일 크랭크가 1단 평행사변형과 같은 V₂ 좌표를 만듭니다.</p>
+        </article>
+
+        <article class="derivation-panel amber-derivation">
+          <span class="derivation-no">02</span>
+          <p class="eyebrow">WHY IT IS A 4R</p>
+          <h3>O′–V₂–K–Q 폐루프가 1 DOF 경로 생성기입니다.</h3>
+          <p>네 개의 회전조인트 O′, V₂, K, Q와 네 강체 링크가 닫힌 고리를 이룹니다.</p>
+          <div class="fourbar-chain" aria-label="4R 링크 순서">
+            <span>O′</span><i>r₁</i><span>V₂</span><i>ρ</i><span>K</span><i>ℓ</i><span>Q</span><i>ground</i><span>O′</span>
+          </div>
+          <div class="math-stack">
+            <code>|K−V₂|=ρ</code>
+            <code>|K−Q|=ℓ</code>
+            <code class="math-result">K = circle(V₂,ρ) ∩ circle(Q,ℓ)</code>
+          </div>
+          <p>φ가 V₂를 정하면 K는 두 원의 교점으로 자동 결정됩니다. 조립 분기 하나를 선택하면 4R 전체가 모터 하나만으로 움직입니다.</p>
+        </article>
+
+        <article class="derivation-panel violet-derivation">
+          <span class="derivation-no">03</span>
+          <p class="eyebrow">WHY W FOLLOWS</p>
+          <h3>W는 별도 조인트가 아니라 coupler 위의 고정점입니다.</h3>
+          <p>V₂–K–W는 변형되지 않는 하나의 삼각형입니다. 따라서 V₂K의 방향이 바뀌면 삼각형 전체가 같은 각도로 회전합니다.</p>
+          <div class="math-stack">
+            <code>θ(φ)=atan2(K−V₂)−θ₀</code>
+            <code class="math-result">W(φ)=V₂(φ)+R(θ(φ))(W₀−V₂₀)</code>
+          </div>
+          <p>이 식이 4R의 coupler curve, 즉 W의 실제 경로를 만듭니다. <strong>XY guide가 경로를 만드는 것이 아닙니다.</strong></p>
+        </article>
+
+        <article class="derivation-panel green-derivation">
+          <span class="derivation-no">04</span>
+          <p class="eyebrow">WHY TWO GUIDES</p>
+          <h3>X와 Y를 따로 따라가면 위치는 자유롭고 회전은 막힙니다.</h3>
+          <p>ground의 X rail 위 carriage가 W의 x를 따르고, 그 carriage에 붙은 Y rail 위 block이 W의 y를 따릅니다. <code>h</code>는 carrier의 고정 가로 길이입니다.</p>
+          <div class="math-stack">
+            <code>x_X=x_W+h</code>
+            <code>x_Y=x_X, y_Y=y_W</code>
+            <code>Y−W=[h,0]ᵀ</code>
+            <code class="math-result">θcarrier=atan2(0,h)=0°</code>
+          </div>
+          <p>한 가이드만 쓰면 다른 방향 이동을 못 하거나 회전을 충분히 막지 못합니다. 직교한 두 P joint가 평면의 x·y 이동을 허용하면서 carrier 방향을 ground에 고정합니다.</p>
+        </article>
+      </div>
+
+      <div class="constraint-summary">
+        <div><span>입력</span><strong>모터각 φ 하나</strong></div>
+        <i>→</i>
+        <div><span>4R</span><strong>V₂, K, W 위치 결정</strong></div>
+        <i>→</i>
+        <div><span>XY guide</span><strong>carrier 위치 추종 · 회전 차단</strong></div>
+        <i>→</i>
+        <div class="summary-result"><span>출력</span><strong>TIP(φ), θTIP=0°</strong></div>
+      </div>
+
+      <div class="mobility-proof">
+        <div><span>평면 moving body</span><strong>N = 5</strong></div>
+        <div><span>저차 조인트</span><strong>5R + 2P = 7</strong></div>
+        <code>M = 3N − 2J = 3×5 − 2×7 = 1</code>
+        <p>따라서 guide가 두 개여도 자유도가 두 개 추가되는 것이 아닙니다. W의 revolute 연결과 두 prismatic guide가 서로 닫힌 사슬을 이루기 때문에 전체 독립 입력은 φ 하나뿐입니다.</p>
+      </div>
+
+      <div class="misconception-grid">
+        <article><b>4R만 있으면?</b><p>W 경로는 나오지만 coupler 자체는 회전하므로 tip 면의 자세는 고정되지 않습니다.</p></article>
+        <article><b>XY guide만 있으면?</b><p>carrier는 회전하지 않지만 어떤 x·y 경로를 따라갈지는 정해지지 않습니다.</p></article>
+        <article><b>둘을 연결하면?</b><p>4R이 정한 W 위치를 guide가 수동으로 따라가므로 추가 모터 없이 1 DOF 운동이 완성됩니다.</p></article>
       </div>
     </section>
 
@@ -203,6 +328,6 @@
     </section>
   </main>
 
-  <script src="redesign_explained.js"></script>
+  <script src="redesign_explained.js?v=20260920"></script>
 </body>
 </html>
