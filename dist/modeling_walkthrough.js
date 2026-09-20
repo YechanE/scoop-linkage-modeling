@@ -18,10 +18,12 @@
     mentalPhase: 0,
     targetPlaying: true,
     vectorPlaying: true,
+    finalPlaying: true,
     framePlaying: false,
     targetIndex: 0,
     frameIndex: 0,
     closureIndex: 0,
+    finalIndex: 0,
     ikIndex: 0,
     ikBranch: -1,
     closureBranch: 1,
@@ -651,6 +653,76 @@
     $("calcTip").textContent = `${pointText(pose.joints.TIP)} mm`;
   }
 
+  function finalDerivatives(pose) {
+    const q1 = pose.phi;
+    const q2 = pose.psi;
+    const V2 = pose.joints.V2;
+    const Q = pose.joints.Q;
+    const dx = V2.x - Q.x;
+    const dz = V2.z - Q.z;
+    const s = Math.max(Math.hypot(dx, dz), 1e-9);
+    const dxPrime = -P.r1 * Math.sin(q1);
+    const dzPrime = P.r1 * Math.cos(q1);
+    const sPrime = (dx * dxPrime + dz * dzPrime) / s;
+    const sigmaPrime = (dx * dzPrime - dz * dxPrime) / (s * s);
+    const C = pose.rawCos;
+    const constant = P.link * P.link - P.rho * P.rho;
+    const cPrime = -sPrime / (2 * P.rho) * (1 + constant / (s * s));
+    const root = Math.sqrt(Math.max(1e-12, 1 - C * C));
+    const q2Prime = sigmaPrime - P.branch * cPrime / root;
+    const tipPrime = {
+      x: -P.r1 * Math.sin(q1) - P.r2 * Math.sin(q2) * q2Prime,
+      z: P.r1 * Math.cos(q1) + P.r2 * Math.cos(q2) * q2Prime
+    };
+    return { s, C, q2Prime, tipPrime, gain: Math.hypot(tipPrime.x, tipPrime.z) };
+  }
+
+  function drawFinalEquation() {
+    const pose = STROKE.poses[state.finalIndex];
+    const svg = $("finalEquationDiagram");
+    const transform = drawMechanism(svg, pose, { width: 700, height: 500, pad: 42, minZ: -8 });
+    const derivatives = finalDerivatives(pose);
+    addArrowDefs(svg);
+
+    const tip = transform(pose.joints.TIP);
+    const gain = Math.max(derivatives.gain, 1e-9);
+    const tangentEnd = {
+      x: tip.x + derivatives.tipPrime.x / gain * 58,
+      y: tip.y - derivatives.tipPrime.z / gain * 58
+    };
+    line(svg, tip, tangentEnd, "tangent", { "marker-end": "url(#arrow-red)" });
+    label(svg, tangentEnd, "+q₁", "label", 9, -8);
+
+    const pivot = transform(pose.joints.O1);
+    const arcRadius = 27;
+    const screenAngle = -pose.phi;
+    const arcEnd = { x: pivot.x + arcRadius * Math.cos(screenAngle), y: pivot.y + arcRadius * Math.sin(screenAngle) };
+    const largeArc = Math.abs(pose.phi) > Math.PI ? 1 : 0;
+    S("path", {
+      d: `M${pivot.x + arcRadius},${pivot.y} A${arcRadius},${arcRadius} 0 ${largeArc} 0 ${arcEnd.x},${arcEnd.y}`,
+      class: "angle-arc"
+    }, svg);
+    label(svg, pivot, "q₁", "label", 34, -10);
+
+    S("rect", { x: 402, y: 18, width: 258, height: 42, rx: 11, class: "formula-pill" }, svg);
+    S("text", {
+      x: 531,
+      y: 44,
+      "text-anchor": "middle",
+      class: "formula-text",
+      text: `dq₂/dq₁ = ${fmt(derivatives.q2Prime, 3)}`
+    }, svg);
+
+    $("finalSlider").value = state.finalIndex;
+    $("finalQ1").textContent = `${fmt(deg(pose.phi), 2)}°`;
+    $("finalS").textContent = `${fmt(derivatives.s, 3)} mm`;
+    $("finalC").textContent = fmt(derivatives.C, 4);
+    $("finalQ2").textContent = `${fmt(normDeg(deg(pose.psi)), 2)}°`;
+    $("finalQ2Prime").textContent = fmt(derivatives.q2Prime, 4);
+    $("finalSpeedGain").textContent = `${fmt(derivatives.gain, 3)} mm/rad`;
+    $("finalTip").textContent = `${fmt(pose.tip.x, 3)}, ${fmt(pose.tip.z, 3)} mm`;
+  }
+
   function bindControls() {
     $("mentalPlay").addEventListener("click", () => {
       state.mentalPlaying = !state.mentalPlaying;
@@ -672,6 +744,10 @@
     $("framePlay").addEventListener("click", () => {
       state.framePlaying = !state.framePlaying;
       $("framePlay").textContent = state.framePlaying ? "❚❚ 정지" : "▶ 재생";
+    });
+    $("finalPlay").addEventListener("click", () => {
+      state.finalPlaying = !state.finalPlaying;
+      $("finalPlay").textContent = state.finalPlaying ? "❚❚" : "▶";
     });
     $("motionToggle").addEventListener("click", () => {
       state.reduceMotion = !state.reduceMotion;
@@ -744,6 +820,12 @@
       state.frameIndex = Number(event.target.value);
       drawFrame();
     });
+    $("finalSlider").addEventListener("input", event => {
+      state.finalPlaying = false;
+      $("finalPlay").textContent = "▶";
+      state.finalIndex = Number(event.target.value);
+      drawFinalEquation();
+    });
   }
 
   function bindNavigation() {
@@ -779,6 +861,10 @@
         state.phase = (state.phase + elapsed * .00055) % TAU;
         drawVector();
       }
+      if (state.finalPlaying) {
+        const next = Math.floor(time / 55) % STROKE.poses.length;
+        if (next !== state.finalIndex) { state.finalIndex = next; drawFinalEquation(); }
+      }
       if (state.framePlaying) {
         const next = Math.floor(time / 55) % STROKE.poses.length;
         if (next !== state.frameIndex) { state.frameIndex = next; drawFrame(); }
@@ -796,6 +882,7 @@
     drawRequiredPlot();
     drawClosure();
     drawFunctionPlot();
+    drawFinalEquation();
     drawFrame();
     bindControls();
     bindNavigation();
@@ -806,6 +893,7 @@
       state.mentalPlaying = false;
       state.targetPlaying = false;
       state.vectorPlaying = false;
+      state.finalPlaying = false;
     }
     requestAnimationFrame(animate);
   }

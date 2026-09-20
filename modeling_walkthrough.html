@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="2단 병진 스쿠핑 링크의 목표 경로, 역기구학, 폐루프 함수 생성을 그림과 애니메이션으로 설명하는 학습 페이지">
   <title>2단 병진 링크 · 모델링 워크스루</title>
-  <link rel="stylesheet" href="modeling_walkthrough.css?v=20260919">
+  <link rel="stylesheet" href="modeling_walkthrough.css?v=20260920">
 </head>
 <body>
   <div class="reading-progress" aria-hidden="true"><span id="readingProgress"></span></div>
@@ -33,8 +33,9 @@
         <a href="#vectors"><span>03</span><em>두 회전벡터</em></a>
         <a href="#ik"><span>04</span><em>정확한 역기구학</em></a>
         <a href="#closure"><span>05</span><em>Q–K 폐루프</em></a>
-        <a href="#frame"><span>06</span><em>한 프레임 계산</em></a>
-        <a href="#meaning"><span>07</span><em>오차와 판정</em></a>
+        <a href="#final-equation"><span>06</span><em>q₁ 최종식 유도</em></a>
+        <a href="#frame"><span>07</span><em>한 프레임 계산</em></a>
+        <a href="#meaning"><span>08</span><em>오차와 판정</em></a>
       </nav>
       <div class="rail-key">
         <span><i class="dot blue"></i>1단 φ</span>
@@ -297,11 +298,123 @@
         </div>
       </section>
 
+      <section class="chapter" id="final-equation" data-chapter="final-equation">
+        <div class="section-intro final-intro">
+          <p class="step-no">06 · FINAL MODEL · q₁ → TIP</p>
+          <h2>결국 모터각 q₁ 하나로<br>TIP 좌표를 직접 계산합니다.</h2>
+          <p>맞습니다. 이 기구의 최종 모델은 <strong>q₁을 입력하면 q₂가 폐루프에서 자동으로 정해지고, 이어서 TIP의 x·z 좌표가 나오는 하나의 함수</strong>입니다. 아래에서 중간 변수를 하나도 생략하지 않고 연결합니다.</p>
+          <div class="notation-bridge" aria-label="기호 구분">
+            <span><b>q₁ = φ</b><small>모터가 직접 돌리는 입력각</small></span>
+            <i>→</i>
+            <span><b>q₂(q₁) = ψ(φ)</b><small>Q–K 링크가 자동으로 만드는 각</small></span>
+            <i>→</i>
+            <span><b>p<sub>TIP</sub>(q₁)</b><small>최종 손끝 좌표</small></span>
+          </div>
+          <div class="notation-warning">
+            <strong>표기 주의</strong>
+            <p>소문자 <code>q₁</code>은 회전 조인트의 각도이고, 도면의 대문자 <code>Q</code>는 움직이지 않는 고정핀입니다. 서로 다른 기호입니다.</p>
+          </div>
+        </div>
+
+        <div class="final-equation-grid">
+          <div class="derivation-stack">
+            <article class="derivation-card">
+              <div class="derivation-card-head"><span>01</span><div><small>INPUT</small><strong>q₁으로 1단 끝점 V₂를 계산</strong></div></div>
+              <p>평행사변형 때문에 플랫폼 오프셋 <code>m</code>은 회전하지 않고 그대로 더해집니다.</p>
+              <div class="equation-block">
+                <code>e(θ) = [cos θ, sin θ]ᵀ</code>
+                <code>V₂(q₁) = O₁ + r₁e(q₁) + m</code>
+              </div>
+              <div class="component-equations">
+                <code>V₂x = O₁x + mₓ + r₁ cos q₁</code>
+                <code>V₂z = O₁z + m_z + r₁ sin q₁</code>
+              </div>
+            </article>
+
+            <article class="derivation-card">
+              <div class="derivation-card-head"><span>02</span><div><small>CLOSURE INPUT</small><strong>고정핀 Q에서 V₂까지의 벡터</strong></div></div>
+              <p>q₁이 바뀌면 V₂가 움직이므로 삼각형 Q–V₂–K의 한 변과 방향이 함께 바뀝니다.</p>
+              <div class="equation-block">
+                <code>d(q₁) = V₂(q₁) − Q = [dₓ, d_z]ᵀ</code>
+                <code>s(q₁) = √(dₓ²+d_z²)</code>
+                <code>σ(q₁) = atan2(d_z,dₓ)</code>
+              </div>
+            </article>
+
+            <article class="derivation-card violet-card">
+              <div class="derivation-card-head"><span>03</span><div><small>LOOP CLOSURE</small><strong>코사인 법칙으로 q₂(q₁)를 분리</strong></div></div>
+              <p><code>K=V₂+ρe(q₂+β)</code>와 <code>|K−Q|=L</code>을 제곱해 전개하면 다음 식이 나옵니다.</p>
+              <div class="equation-block">
+                <code>L² = s²+ρ²+2ρs cos(q₂+β−σ)</code>
+                <code>C(q₁) = (L²−ρ²−s(q₁)²)/(2ρs(q₁))</code>
+                <code class="result-equation">q₂(q₁) = σ(q₁)−β+χ cos⁻¹(C(q₁))</code>
+              </div>
+              <p class="equation-note"><code>χ=+1</code> 또는 <code>−1</code>은 조립 분기이며, 실제 링크가 닫히려면 <code>|C(q₁)|≤1</code>이어야 합니다.</p>
+            </article>
+
+            <article class="derivation-card green-card">
+              <div class="derivation-card-head"><span>04</span><div><small>FORWARD KINEMATICS</small><strong>q₂를 대입해 TIP 좌표 완성</strong></div></div>
+              <p>2단 회전벡터를 더한 뒤, 자세가 고정된 출력 플랫폼의 오프셋 <code>c</code>를 그대로 더합니다.</p>
+              <div class="equation-block">
+                <code>p<sub>TIP</sub>(q₁) = V₂(q₁)+r₂e(q₂(q₁))+c</code>
+              </div>
+              <div class="final-vector-equation">
+                <span>p<sub>TIP</sub>(q₁) =</span>
+                <div class="bracket-vector">
+                  <code>O₁x+mₓ+cₓ+r₁cos q₁+r₂cos(q₂(q₁))</code>
+                  <code>O₁z+m_z+c_z+r₁sin q₁+r₂sin(q₂(q₁))</code>
+                </div>
+              </div>
+              <p class="equation-note"><code>c</code>에 회전행렬을 곱하지 않는 이유는 TIP이 2단 크랭크가 아니라 방향이 유지되는 평행사변형 출력부에 붙어 있기 때문입니다.</p>
+            </article>
+          </div>
+
+          <div class="visual-column sticky-visual final-visual">
+            <article class="card dark-card diagram-card">
+              <div class="card-head">
+                <div><span class="mini-label">q₁ → q₂ → TIP</span><strong>최종 모델을 한 각으로 실행</strong></div>
+                <button class="icon-button" id="finalPlay" type="button" aria-label="최종식 애니메이션 재생 또는 정지">❚❚</button>
+              </div>
+              <svg id="finalEquationDiagram" class="diagram final-equation-svg" viewBox="0 0 700 500" role="img" aria-label="q1을 입력하면 q2와 TIP 좌표가 계산되는 최종 기구 모델"></svg>
+              <label class="range-row dark"><span>입력 q₁</span><input id="finalSlider" type="range" min="0" max="240" value="0"><output id="finalQ1">—</output></label>
+              <div class="final-live-values">
+                <span><small>s(q₁)</small><strong id="finalS">—</strong></span>
+                <span><small>C(q₁)</small><strong id="finalC">—</strong></span>
+                <span><small>자동 q₂</small><strong id="finalQ2">—</strong></span>
+                <span><small>dq₂/dq₁</small><strong id="finalQ2Prime">—</strong></span>
+                <span><small>|dp/dq₁|</small><strong id="finalSpeedGain">—</strong></span>
+                <span><small>TIP(q₁)</small><strong id="finalTip">—</strong></span>
+              </div>
+              <div class="tangent-key"><i></i><span>화살표는 q₁이 증가할 때의 순간 이동방향 <code>dp<sub>TIP</sub>/dq₁</code></span></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="velocity-derivation card">
+          <div class="velocity-copy">
+            <p class="step-no">ONE MORE STEP · VELOCITY</p>
+            <h3>q₁에 대해 미분하면 TIP 속도까지 나옵니다.</h3>
+            <p>여기서 <code>′ = d/dq₁</code>입니다. 모터 각속도가 <code>q̇₁</code>이면, 오른쪽의 위치식을 q₁로 미분한 뒤 <code>q̇₁</code>을 곱하면 실제 TIP 속도가 됩니다.</p>
+            <div class="velocity-warning"><strong>행정 방향</strong><span>현재 설계는 q₁이 139.25°에서 17.75°로 감소합니다. 따라서 실제 진행방향은 그림의 +q₁ 접선과 반대입니다.</span></div>
+          </div>
+          <div class="velocity-math">
+            <code>e⊥(θ) = [−sin θ, cos θ]ᵀ</code>
+            <code>d′(q₁) = r₁e⊥(q₁) = [−r₁sin q₁, r₁cos q₁]ᵀ</code>
+            <code>s′ = (dₓd′ₓ+d_zd′_z)/s</code>
+            <code>σ′ = (dₓd′_z−d_zd′ₓ)/s²</code>
+            <code>C′ = −s′/(2ρ) · [1+(L²−ρ²)/s²]</code>
+            <code>q₂′ = σ′−χC′/√(1−C²)</code>
+            <code class="velocity-result">dp<sub>TIP</sub>/dq₁ = r₁e⊥(q₁)+r₂q₂′e⊥(q₂)</code>
+            <code>v<sub>TIP</sub> = (dp<sub>TIP</sub>/dq₁) q̇₁</code>
+          </div>
+        </div>
+      </section>
+
       <section class="chapter" id="frame" data-chapter="frame">
         <div class="section-intro narrow">
-          <p class="step-no">06 · ONE FRAME, START TO FINISH</p>
+          <p class="step-no">07 · ONE FRAME, START TO FINISH</p>
           <h2>입력각 하나가 TIP 좌표가 되기까지</h2>
-          <p>스라이더를 움직이면 실제 <code>solvePose()</code>와 같은 순서로 모든 값을 다시 계산합니다. 시작 자세에서는 φ=139.25° 하나만 주어지고 ψ≈197.72°가 자동으로 결정됩니다.</p>
+          <p>스라이더를 움직이면 실제 <code>solvePose()</code>와 같은 순서로 모든 값을 다시 계산합니다. 시작 자세에서는 q₁=φ=139.25° 하나만 주어지고 q₂=ψ≈197.72°가 자동으로 결정됩니다.</p>
         </div>
 
         <div class="frame-workbench card">
@@ -333,7 +446,7 @@
 
       <section class="chapter" id="meaning" data-chapter="meaning">
         <div class="section-intro">
-          <p class="step-no">07 · WHAT THE RESULT MEANS</p>
+          <p class="step-no">08 · WHAT THE RESULT MEANS</p>
           <h2>오차가 생기는 곳과,<br>이 모델이 보장하지 않는 것</h2>
         </div>
 
@@ -388,6 +501,6 @@
   </div>
 
   <script src="mechanism.js"></script>
-  <script src="modeling_walkthrough.js?v=20260919"></script>
+  <script src="modeling_walkthrough.js?v=20260920"></script>
 </body>
 </html>
