@@ -87,13 +87,14 @@
     const phi = rad(phiDeg);
     const v2 = add(O_PRIME, point(R1 * Math.cos(phi), R1 * Math.sin(phi)));
     const output = sharedOutput(v2);
+    const psi = angle(sub(output.w, v2));
     const xSlide = point(output.w.x + GUIDE_OFFSET, GUIDE_Y);
     const ySlide = point(xSlide.x, output.w.y);
     const a = sub(v2, output.k);
     const b = sub(Q, output.k);
     const sine = Math.abs(cross(a, b)) / (length(a) * length(b));
     const transmission = deg(Math.asin(clamp(sine, 0, 1)));
-    return { phiDeg, transmission, O_PRIME, Q, v2, k: output.k, w: output.w, tip: output.tip, xSlide, ySlide };
+    return { phiDeg, psiDeg: deg(psi), transmission, O_PRIME, Q, v2, k: output.k, w: output.w, tip: output.tip, xSlide, ySlide };
   }
 
   const TIP_PATH = Array.from({ length: 181 }, (_, index) => solveNew(START_DEG + (END_DEG - START_DEG) * index / 180).tip);
@@ -101,40 +102,52 @@
 
   const CONCEPT_STEPS = {
     1: {
-      badge: "STEP 1 · EXTRACT THE PATH",
-      title: "기존 평행사변형에서 V2의 운동식만 꺼냅니다",
-      equation: "V₂ = O₁ + a + r₁e(φ) = O′ + r₁e(φ)",
-      description: "기존 1단 평행사변형에서 P1→V2 오프셋 a는 지면좌표계에서 고정입니다. 따라서 O1을 같은 a만큼 옮긴 O′에 크랭크를 놓으면 V2는 이전과 완전히 같은 원을 그립니다."
+      badge: "STEP 1 · TWO ROTATING VECTORS",
+      title: "2단 평행사변형은 두 각 φ와 ψ를 가집니다",
+      equation: "Pₜᵢₚ = C₀ + r₁e(φ) + r₂e(ψ)",
+      description: "두 회전벡터를 더하면 원 하나보다 다양한 경로를 만들 수 있고, 두 평행사변형은 출력면의 방향을 유지합니다. 하지만 φ와 ψ가 아직 서로 독립이므로 이 상태는 2 DOF입니다."
     },
     2: {
-      badge: "STEP 2 · CLOSE THE 4R LOOP",
-      title: "V2와 Q에서 그린 두 원의 교점이 K입니다",
-      equation: "|K−V₂|=ρ,  |K−Q|=ℓ",
-      description: "입력 φ가 V2를 정하면 K는 두 고정길이 조건을 동시에 만족해야 합니다. 선택한 조립 분기에서 두 원의 교점 하나가 K가 되므로 O′–V2–K–Q 4R은 1 DOF로 움직입니다."
+      badge: "STEP 2 · φ FIRST DETERMINES V₂",
+      title: "모터각 φ를 주면 V₂ 위치가 먼저 확정됩니다",
+      equation: "V₂(φ) = O₁ + a + r₁e(φ)",
+      description: "Q–K 링크를 보기 전에 순서를 분리해야 합니다. 1단의 평행사변형과 고정 offset a만으로 V₂가 파란 원 위의 한 점에 도착합니다. Q–K는 이 원을 만들거나 V₂를 끌고 가지 않습니다."
     },
     3: {
-      badge: "STEP 3 · GENERATE THE W PATH",
-      title: "강체 삼각형 V2–K–W가 W를 함께 운반합니다",
-      equation: "W(φ)=V₂(φ)+R(θ(φ))(W₀−V₂₀)",
-      description: "W는 새로운 자유도가 아니라 coupler에 고정된 점입니다. V2K 방향이 변할 때 강체 삼각형 전체가 회전하므로 W가 초록색 coupler curve를 그립니다. 여기까지가 경로 생성입니다."
+      badge: "STEP 3 · Q–K THEN DETERMINES ψ",
+      title: "이미 정해진 V₂에서 두 원의 교점 K가 ψ를 고릅니다",
+      equation: "K=V₂+ρe(ψ+β),  |K−Q|=L  ⇒  F(φ,ψ)=0",
+      description: "V₂는 그대로 둡니다. K는 V₂ 중심 반지름 ρ의 원과 Q 중심 반지름 L의 원을 동시에 만족해야 하므로 교점으로 정해집니다. 선택한 branch의 K 방향이 곧 2단 각도 ψ를 강제합니다."
     },
     4: {
-      badge: "STEP 4 · FOLLOW X",
-      title: "ground의 X guide가 W의 가로 이동을 따라갑니다",
-      equation: "xX = xW + h",
-      description: "노란 carriage는 ground에 고정된 수평 rail 위에서 x방향으로만 움직입니다. h는 W에서 vertical rail까지 유지해야 하는 carrier의 가로 길이입니다."
+      badge: "STEP 4 · ψ DETERMINES W AND TIP",
+      title: "정해진 ψ가 W를, W가 TIP을 차례로 정합니다",
+      equation: "φ → V₂(φ) → ψ(φ) → W(φ) → TIP(φ)",
+      description: "W=V₂+r₂e(ψ), TIP=W+c입니다. 따라서 독립 입력은 φ 하나뿐이고, 나머지 점은 폐루프 제약을 따라 순서대로 계산됩니다. Q–K가 2 DOF를 1 DOF로 줄이는 이유가 바로 이것입니다."
     },
     5: {
-      badge: "STEP 5 · FOLLOW Y",
-      title: "X carriage 위의 Y guide가 W의 높이를 따라갑니다",
-      equation: "xY=xX,  yY=yW  ⇒  Y−W=[h,0]ᵀ",
-      description: "세로 rail 자체는 X carriage와 함께 좌우로 움직이고, 초록 Y block은 그 rail을 따라 위아래로 움직입니다. 따라서 Y와 W를 잇는 output carrier는 항상 수평입니다."
+      badge: "STEP 5 · REPLACE THE FIRST PARALLELOGRAM",
+      title: "O′–V₂ 크랭크가 기존과 같은 V₂ 원을 만듭니다",
+      equation: "O′≡O₁+a  ⇒  V₂=O′+r₁e(φ)",
+      description: "고정 offset a를 O₁ 쪽으로 옮겨 O′를 정의하면 첫 평행사변형을 단일 크랭크로 바꿀 수 있습니다. O′는 임의의 새 축이 아니라 기존 V₂ 원의 정확한 중심입니다."
     },
     6: {
-      badge: "STEP 6 · ONE-DOF OUTPUT",
-      title: "4R의 경로와 XY guide의 자세구속을 결합합니다",
-      equation: "φ → W(φ) → TIP(φ),  θTIP=0°",
-      description: "모터는 φ 하나만 입력합니다. 4R이 W 위치를 만들고 XY carriage는 그 위치에 수동으로 끌려가면서 carrier 회전을 막습니다. 그래서 추가 모터 없이 원하는 TIP 경로와 0° 자세가 동시에 나옵니다."
+      badge: "STEP 6 · THE SAME CLOSURE BECOMES A 4R",
+      title: "O′–V₂–K–Q 4R이 같은 ψ와 W 경로를 만듭니다",
+      equation: "O′–V₂–K–Q–O′,  |V₂K|=ρ,  |KQ|=L",
+      description: "V₂의 운동과 Q–K의 길이 구속을 그대로 두었으므로 ψ(φ)도 같습니다. V₂–K–W는 하나의 강체 coupler이고, 그 위 고정점 W는 기존과 같은 초록색 경로를 그립니다."
+    },
+    7: {
+      badge: "STEP 7 · SEPARATE POSITION FROM ORIENTATION",
+      title: "직교 XY guide가 W의 x·y를 따라가며 회전만 막습니다",
+      equation: "Y−W=[h,0]ᵀ  ⇒  θcarrier=0°",
+      description: "수평 rail의 X carriage가 x를, 그 위 수직 rail의 Y block이 y를 따라갑니다. 두 이동은 4R이 만든 W에 수동으로 끌려가고, W–Y가 항상 수평이어서 carrier의 자세만 0°로 고정됩니다."
+    },
+    8: {
+      badge: "STEP 8 · COMPLETE ONE-DOF MOTION",
+      title: "모터 하나가 경로와 0° 자세를 동시에 만듭니다",
+      equation: "φ → V₂ → ψ → W/TIP,  XY guide → θTIP=0°",
+      description: "4R은 원하는 위치 경로를 만들고 XY guide는 output의 회전을 차단합니다. guide용 추가 모터는 없습니다. 모든 점과 carriage가 하나의 입력 φ에 종속되므로 전체 기구는 1 DOF입니다."
     }
   };
 
@@ -257,12 +270,71 @@
       .forEach(item => joint(svg, item[0], item[1], item[2]));
   }
 
+  function drawTwoStage(svg, pose, includeClosure = false, includeTip = true) {
+    line(svg, pose.O1, pose.p1, "kin-link stage1");
+    line(svg, pose.O1B, pose.p1b, "kin-link stage1");
+    line(svg, pose.p1, pose.p1b, "kin-link platform");
+    line(svg, pose.p1, pose.v2, "kin-link platform");
+    line(svg, pose.v2, pose.v2b, "kin-link platform");
+    line(svg, pose.v2, pose.w, "kin-link driver");
+    line(svg, pose.v2b, pose.wb, "kin-link driver");
+    line(svg, pose.w, pose.wb, "kin-link output");
+    if (includeClosure) {
+      line(svg, pose.v2, pose.k, "kin-link coupling");
+      line(svg, pose.k, pose.Q, "kin-link coupling");
+    }
+    if (includeTip) line(svg, pose.w, pose.tip, "kin-link output");
+    [[pose.O1, "O1", "ground"], [pose.O1B, "O1b", "ground"], [pose.p1, "P1"], [pose.p1b, "P1b"],
+      [pose.v2, "V2"], [pose.v2b, "V2b"], [pose.w, "W"], [pose.wb, "Wb"]]
+      .concat(includeClosure ? [[pose.k, "K"], [pose.Q, "Q", "ground"]] : [])
+      .concat(includeTip ? [[pose.tip, "TIP"]] : [])
+      .forEach(item => joint(svg, item[0], item[1], item[2]));
+  }
+
   function drawConcept(oldPose, pose) {
     const svg = document.getElementById("conceptMechanism");
     const step = state.conceptStep;
-    drawConceptBackground(svg, step >= 3 ? W_PATH : null);
+    drawConceptBackground(svg, [4, 6, 7, 8].includes(step) ? W_PATH : null);
 
     if (step === 1) {
+      drawTwoStage(svg, oldPose, false, true);
+      textAt(svg, scale(add(oldPose.O1, oldPose.p1), .5), "φ", "concept-big-label", -5, -6, "middle");
+      textAt(svg, scale(add(oldPose.v2, oldPose.w), .5), "ψ", "concept-big-label", 4, -6, "middle");
+      textAt(svg, point(3, 13), "φ와 ψ가 독립이면 2 DOF", "concept-big-label", 0, 0, "middle");
+    } else if (step === 2) {
+      svgElement("circle", { cx: pose.O_PRIME.x, cy: sy(pose.O_PRIME.y), r: R1, class: "concept-circle" }, svg);
+      line(svg, oldPose.O1, oldPose.p1, "kin-link stage1");
+      line(svg, oldPose.O1B, oldPose.p1b, "kin-link stage1");
+      line(svg, oldPose.p1, oldPose.p1b, "kin-link platform");
+      line(svg, oldPose.p1, oldPose.v2, "concept-offset");
+      [[oldPose.O1, "O1", "ground"], [oldPose.O1B, "O1b", "ground"], [oldPose.p1, "P1"], [oldPose.p1b, "P1b"], [pose.v2, "V2"]]
+        .forEach(item => joint(svg, item[0], item[1], item[2]));
+      svgElement("circle", { cx: pose.v2.x, cy: sy(pose.v2.y), r: 4.7, class: "concept-fixed-ring" }, svg);
+      textAt(svg, scale(add(oldPose.p1, oldPose.v2), .5), "고정 offset a", "concept-big-label", 4, -2);
+      textAt(svg, pose.v2, "① φ가 먼저 V₂를 확정", "concept-big-label", 7, -10);
+      textAt(svg, point(9, 18), "이 단계에는 아직 Q–K를 사용하지 않습니다", "concept-sub-label", 0, 0, "middle");
+    } else if (step === 3) {
+      svgElement("circle", { cx: pose.v2.x, cy: sy(pose.v2.y), r: RHO, class: "concept-circle" }, svg);
+      svgElement("circle", { cx: pose.Q.x, cy: sy(pose.Q.y), r: ROCKER, class: "concept-circle" }, svg);
+      line(svg, pose.O_PRIME, pose.v2, "concept-ghost");
+      line(svg, pose.v2, pose.k, "kin-link driver");
+      line(svg, pose.k, pose.Q, "kin-link coupling");
+      line(svg, pose.v2, pose.w, "concept-offset");
+      line(svg, pose.k, pose.w, "concept-offset");
+      [[pose.O_PRIME, "O′", "ground"], [pose.v2, "V2"], [pose.k, "K"], [pose.Q, "Q", "ground"], [pose.w, "W"]]
+        .forEach(item => joint(svg, item[0], item[1], item[2]));
+      svgElement("circle", { cx: pose.v2.x, cy: sy(pose.v2.y), r: 4.7, class: "concept-fixed-ring" }, svg);
+      textAt(svg, pose.v2, "V₂ 위치는 그대로", "concept-big-label", 7, -10);
+      textAt(svg, pose.k, "교점 K → ψ", "concept-big-label", 10, 9);
+      textAt(svg, scale(add(pose.v2, pose.k), .5), "ρ", "concept-big-label", 2, -3);
+      textAt(svg, scale(add(pose.Q, pose.k), .5), "L", "concept-big-label", 3, -3);
+    } else if (step === 4) {
+      drawTwoStage(svg, oldPose, true, true);
+      textAt(svg, pose.v2, "φ → V₂", "concept-big-label", 5, -10);
+      textAt(svg, pose.k, "→ ψ", "concept-big-label", 5, -8);
+      textAt(svg, pose.w, "→ W", "concept-big-label", 5, -8);
+      textAt(svg, pose.tip, "→ TIP", "concept-big-label", 5, -8);
+    } else if (step === 5) {
       svgElement("circle", { cx: pose.O_PRIME.x, cy: sy(pose.O_PRIME.y), r: R1, class: "concept-circle" }, svg);
       line(svg, oldPose.O1, oldPose.p1, "concept-ghost");
       line(svg, oldPose.O1B, oldPose.p1b, "concept-ghost");
@@ -274,38 +346,25 @@
         .forEach(item => joint(svg, item[0], item[1], item[2]));
       textAt(svg, scale(add(oldPose.p1, oldPose.v2), .5), "a", "concept-big-label", 3, -3);
       textAt(svg, scale(add(oldPose.O1, pose.O_PRIME), .5), "같은 a", "concept-big-label", 4, 0);
-      textAt(svg, point(12, 126), "점선 평행사변형과 파란 단일 crank가 같은 V2를 만듭니다", "concept-sub-label", 0, 0, "middle");
-    } else if (step === 2) {
-      svgElement("circle", { cx: pose.v2.x, cy: sy(pose.v2.y), r: RHO, class: "concept-circle" }, svg);
-      svgElement("circle", { cx: pose.Q.x, cy: sy(pose.Q.y), r: ROCKER, class: "concept-circle" }, svg);
-      drawFourBar(svg, pose, false);
-      textAt(svg, pose.k, "두 원의 교점", "concept-big-label", 5, -10);
-      textAt(svg, scale(add(pose.v2, pose.k), .5), "ρ", "concept-big-label", 2, -3);
-      textAt(svg, scale(add(pose.Q, pose.k), .5), "ℓ", "concept-big-label", 3, -3);
-    } else if (step === 3) {
+      textAt(svg, point(12, 126), "점선 평행사변형과 파란 단일 crank가 같은 V₂를 만듭니다", "concept-sub-label", 0, 0, "middle");
+    } else if (step === 6) {
       drawFourBar(svg, pose, true);
-      textAt(svg, pose.w, "coupler point", "concept-big-label", 5, -9);
-      textAt(svg, point(8, 14), "4R이 만드는 W 경로", "concept-big-label", 0, 0, "middle");
-    } else if (step === 4) {
-      drawFourBar(svg, pose, true);
-      rectAt(svg, point(-62, GUIDE_Y), 72, 5.5, "kin-rail");
-      rectAt(svg, pose.xSlide, 16, 11, "kin-block-x");
-      line(svg, pose.xSlide, pose.ySlide, "concept-guide-line");
-      line(svg, pose.w, pose.ySlide, "concept-dimension");
-      joint(svg, pose.xSlide, "X", "guide");
-      textAt(svg, scale(add(pose.w, pose.ySlide), .5), "h", "concept-big-label", 0, -4, "middle");
-      textAt(svg, pose.xSlide, "xX = xW + h", "concept-big-label", 0, -11, "middle");
-    } else if (step === 5) {
-      drawFourBar(svg, pose, true);
+      line(svg, pose.w, pose.tip, "kin-link output");
+      joint(svg, pose.tip, "TIP");
+      textAt(svg, pose.w, "같은 coupler point", "concept-big-label", 5, -9);
+      textAt(svg, point(8, 14), "같은 V₂ + 같은 Q–K 구속 = 같은 W 경로", "concept-big-label", 0, 0, "middle");
+    } else if (step === 7) {
       rectAt(svg, point(-62, GUIDE_Y), 72, 5.5, "kin-rail");
       rectAt(svg, pose.xSlide, 16, 11, "kin-block-x");
       rectAt(svg, point(pose.xSlide.x, 103), 5.5, 64, "kin-rail");
       rectAt(svg, pose.ySlide, 11, 16, "kin-block-y");
+      drawFourBar(svg, pose, true);
       line(svg, pose.w, pose.ySlide, "kin-link output");
-      joint(svg, pose.xSlide, "X", "guide");
-      joint(svg, pose.ySlide, "Y", "guide");
-      textAt(svg, pose.ySlide, "yY = yW", "concept-big-label", 7, 7);
-      textAt(svg, scale(add(pose.w, pose.ySlide), .5), "Y−W=[h,0]", "concept-big-label", 0, -5, "middle");
+      [[pose.xSlide, "X", "guide"], [pose.ySlide, "Y", "guide"]]
+        .forEach(item => joint(svg, item[0], item[1], item[2]));
+      textAt(svg, pose.xSlide, "x를 추종", "concept-big-label", 0, -10, "middle");
+      textAt(svg, pose.ySlide, "y를 추종", "concept-big-label", 7, 7);
+      textAt(svg, scale(add(pose.w, pose.ySlide), .5), "항상 수평", "concept-big-label", 0, -5, "middle");
     } else {
       rectAt(svg, point(-62, GUIDE_Y), 72, 5.5, "kin-rail");
       rectAt(svg, pose.xSlide, 16, 11, "kin-block-x");
@@ -323,14 +382,14 @@
     }
 
     document.getElementById("conceptPhi").textContent = `${pose.phiDeg.toFixed(2)}°`;
+    document.getElementById("conceptV2").textContent = `(${pose.v2.x.toFixed(2)}, ${pose.v2.y.toFixed(2)})`;
+    document.getElementById("conceptPsi").textContent = `${pose.psiDeg.toFixed(2)}°`;
     document.getElementById("conceptW").textContent = `(${pose.w.x.toFixed(2)}, ${pose.w.y.toFixed(2)})`;
-    document.getElementById("conceptX").textContent = `x=${pose.xSlide.x.toFixed(2)}`;
-    document.getElementById("conceptY").textContent = `y=${pose.ySlide.y.toFixed(2)}`;
     document.getElementById("conceptCarrierAngle").textContent = "0.000°";
   }
 
   function setConceptStep(step) {
-    state.conceptStep = clamp(Number(step), 1, 6);
+    state.conceptStep = clamp(Number(step), 1, 8);
     const copy = CONCEPT_STEPS[state.conceptStep];
     document.getElementById("conceptBadge").textContent = copy.badge;
     document.getElementById("conceptTitle").textContent = copy.title;
