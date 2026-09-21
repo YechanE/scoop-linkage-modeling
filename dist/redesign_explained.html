@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="XM540 스쿠핑 그리퍼의 기존 2단 평행사변형 문제와 XY-guide 재설계를 기구학 애니메이션 및 OpenRadioss 결과로 설명합니다.">
   <title>Tip 자세구속 재설계 · 원인과 변경점</title>
-  <link rel="stylesheet" href="redesign_explained.css?v=20260921">
+  <link rel="stylesheet" href="redesign_explained.css?v=20260921-coupler">
 </head>
 <body>
   <header class="topbar">
@@ -132,6 +132,90 @@
           <span><small>carrier 각도</small><strong id="conceptCarrierAngle">0.000°</strong></span>
         </div>
       </article>
+
+      <section class="coupler-deep-dive" id="coupler" aria-labelledby="couplerTitle">
+        <div class="coupler-intro">
+          <div>
+            <p class="eyebrow">4R COUPLER · DEEP DIVE</p>
+            <h3 id="couplerTitle">coupler는 단순한 선분이 아니라<br>V₂·K·W를 함께 운반하는 하나의 강체입니다.</h3>
+          </div>
+          <p>4R에서 <strong>coupler link</strong>는 입력 crank와 출력 rocker 사이를 잇는 떠 있는 링크입니다. 이 설계에서는 V₂와 K가 coupler의 두 회전핀이고, W는 그 강체 위에 찍어 둔 고정점입니다. 따라서 W는 별도의 링크나 자유도가 아니라 coupler와 함께 움직이는 <strong>coupler point</strong>입니다.</p>
+        </div>
+
+        <div class="coupler-lab">
+          <div class="coupler-stage">
+            <div class="coupler-stage-head">
+              <div><span id="couplerBadge">01 · FOUR LINKS</span><strong id="couplerStageTitle">4R을 이루는 네 링크부터 구분합니다</strong></div>
+              <button id="couplerPlay" type="button" aria-pressed="true" aria-label="coupler 애니메이션 재생 또는 정지">Ⅱ 정지</button>
+            </div>
+            <svg id="couplerMechanism" viewBox="-105 -148 150 158" role="img" aria-label="4R coupler link와 coupler point W, coupler curve를 네 단계로 설명하는 애니메이션"></svg>
+            <div class="coupler-stage-copy">
+              <code id="couplerEquation">ground + input crank + coupler + output rocker = 4R</code>
+              <p id="couplerDescription">O′–Q는 움직이지 않는 ground link, O′–V₂는 입력 crank, V₂–K–W는 coupler body, K–Q는 output rocker입니다. 네 연결부 O′, V₂, K, Q가 모두 revolute joint이므로 4R이라고 부릅니다.</p>
+            </div>
+            <div class="coupler-step-buttons" id="couplerSteps" aria-label="4R coupler 상세 설명 단계">
+              <button type="button" data-coupler-step="1" class="active"><span>1</span>네 링크 구분</button>
+              <button type="button" data-coupler-step="2"><span>2</span>강체 삼각형</button>
+              <button type="button" data-coupler-step="3"><span>3</span>자세와 좌표변환</button>
+              <button type="button" data-coupler-step="4"><span>4</span>coupler curve</button>
+            </div>
+            <div class="coupler-readouts" aria-live="polite">
+              <span><small>coupler 자세 θc</small><strong id="couplerTheta">—</strong></span>
+              <span><small>고정 상대각 β</small><strong id="couplerBeta">—</strong></span>
+              <span><small>V₂K 길이 ρ</small><strong id="couplerRho">—</strong></span>
+              <span><small>V₂W 길이 r₂</small><strong id="couplerR2">—</strong></span>
+            </div>
+          </div>
+
+          <aside class="coupler-anatomy" aria-label="4R coupler 용어와 역할">
+            <article>
+              <span class="coupler-swatch ground-swatch"></span>
+              <div><b>ground link · O′–Q</b><p>두 고정축 사이의 움직이지 않는 기준 링크입니다. 실제로 막대가 보이지 않아도 프레임이 이 링크 역할을 합니다.</p></div>
+            </article>
+            <article>
+              <span class="coupler-swatch crank-swatch"></span>
+              <div><b>input crank · O′–V₂</b><p>모터각 φ로 회전하며 V₂를 원 위의 한 점으로 옮깁니다.</p></div>
+            </article>
+            <article class="coupler-focus-card">
+              <span class="coupler-swatch body-swatch"></span>
+              <div><b>coupler link · V₂–K–W</b><p>ground에 직접 고정되지 않은 강체입니다. V₂와 K 두 핀의 위치가 정해지면 이 body의 평면 위치와 회전이 모두 정해집니다.</p></div>
+            </article>
+            <article>
+              <span class="coupler-swatch rocker-swatch"></span>
+              <div><b>output rocker · K–Q</b><p>고정축 Q를 중심으로 흔들리며 K가 반지름 L의 원을 벗어나지 못하게 합니다.</p></div>
+            </article>
+          </aside>
+        </div>
+
+        <div class="coupler-terms">
+          <article><span>01</span><b>coupler link</b><p>V₂와 K 사이를 연결하는 <strong>강체 body 전체</strong>입니다. 이 설계에서는 W가 선분 V₂K 밖에 있으므로 실제 형상은 V₂–K–W 삼각 plate로 생각하는 편이 정확합니다.</p></article>
+          <article><span>02</span><b>coupler point W</b><p>coupler body에 고정된 관찰점입니다. <code>|V₂W|</code>와 <code>∠KV₂W</code>가 항상 일정하므로 W에는 독립적인 자유도가 없습니다.</p></article>
+          <article><span>03</span><b>coupler curve</b><p>φ가 변할 때 coupler point W가 지나간 <strong>자취</strong>입니다. 물리적인 rail이 아니라 여러 순간의 W 좌표를 이어 만든 기하학적 곡선입니다.</p></article>
+        </div>
+
+        <div class="coupler-derivation">
+          <div>
+            <p class="eyebrow">RIGID-BODY KINEMATICS</p>
+            <h3>V₂와 K가 정해지면 W는 강체 좌표변환으로 바로 나옵니다.</h3>
+            <p>coupler의 x축을 V₂→K 방향으로 잡습니다. 그 방향각이 <code>θc</code>입니다. W의 coupler-local 좌표 <code>rᶜW=[aW,bW]ᵀ</code>는 제작 후 절대 바뀌지 않습니다.</p>
+          </div>
+          <div class="math-stack coupler-math">
+            <code>θc(φ)=atan2(Ky−V₂y, Kx−V₂x)</code>
+            <code>rᶜW=R(−θc₀)(W₀−V₂₀)=[aW,bW]ᵀ (constant)</code>
+            <code class="math-result">W(φ)=V₂(φ)+R(θc(φ))rᶜW</code>
+          </div>
+          <div class="coupler-equivalent">
+            <code>K=V₂+ρe(θc)</code>
+            <code>W=V₂+r₂e(θc−β)</code>
+            <p><code>θc=ψ+β</code>이므로 앞에서 사용한 <code>W=V₂+r₂e(ψ)</code>와 완전히 같은 식입니다.</p>
+          </div>
+        </div>
+
+        <div class="coupler-takeaway">
+          <b>왜 W 경로가 원이 아닌가?</b>
+          <p>W는 한 고정축 주위를 도는 점이 아닙니다. <strong>원운동하는 V₂의 병진</strong> 위에 <strong>coupler 자체의 회전</strong>이 더해집니다. 그래서 <code>W=V₂+R(θc)rᶜW</code>는 일반적으로 복잡한 곡선을 만들며, 같은 4R에서도 W의 local 위치를 바꾸면 전혀 다른 coupler curve가 나옵니다.</p>
+        </div>
+      </section>
 
       <div class="derivation-grid">
         <article class="derivation-panel blue-derivation">
@@ -372,6 +456,6 @@
     </section>
   </main>
 
-  <script src="redesign_explained.js?v=20260921"></script>
+  <script src="redesign_explained.js?v=20260921-coupler"></script>
 </body>
 </html>

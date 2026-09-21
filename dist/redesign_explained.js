@@ -19,6 +19,10 @@
   const ROCKER = length(sub(K_0, Q));
   const TRIANGLE_W = sub(W_0, V2_0);
   const INITIAL_COUPLER_ANGLE = angle(sub(K_0, V2_0));
+  const R2 = length(TRIANGLE_W);
+  const COUPLER_BETA = INITIAL_COUPLER_ANGLE - angle(TRIANGLE_W);
+  const COUPLER_LOCAL_W = rotate(TRIANGLE_W, -INITIAL_COUPLER_ANGLE);
+  const COUPLER_KW = length(sub(W_0, K_0));
   const BRANCH = Math.sign(cross(sub(Q, V2_0), sub(K_0, V2_0)));
   const STAGE1_WIDTH = 20;
   const STAGE2_WIDTH = 16;
@@ -37,6 +41,7 @@
     progress: 0,
     playing: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     conceptStep: 1,
+    couplerStep: 1,
     direction: 1,
     previousTime: 0
   };
@@ -47,11 +52,18 @@
   function scale(a, s) { return point(a.x * s, a.y * s); }
   function length(a) { return Math.hypot(a.x, a.y); }
   function angle(a) { return Math.atan2(a.y, a.x); }
+  function dot(a, b) { return a.x * b.x + a.y * b.y; }
   function cross(a, b) { return a.x * b.y - a.y * b.x; }
   function rotate(a, theta) { return point(a.x * Math.cos(theta) - a.y * Math.sin(theta), a.x * Math.sin(theta) + a.y * Math.cos(theta)); }
   function deg(value) { return value * 180 / Math.PI; }
   function rad(value) { return value * Math.PI / 180; }
   function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
+  function signedDeg(value) {
+    let result = deg(value);
+    while (result > 180) result -= 360;
+    while (result <= -180) result += 360;
+    return result;
+  }
 
   function circleClosure(v2) {
     const delta = sub(Q, v2);
@@ -88,13 +100,14 @@
     const v2 = add(O_PRIME, point(R1 * Math.cos(phi), R1 * Math.sin(phi)));
     const output = sharedOutput(v2);
     const psi = angle(sub(output.w, v2));
+    const couplerAngle = angle(sub(output.k, v2));
     const xSlide = point(output.w.x + GUIDE_OFFSET, GUIDE_Y);
     const ySlide = point(xSlide.x, output.w.y);
     const a = sub(v2, output.k);
     const b = sub(Q, output.k);
     const sine = Math.abs(cross(a, b)) / (length(a) * length(b));
     const transmission = deg(Math.asin(clamp(sine, 0, 1)));
-    return { phiDeg, psiDeg: deg(psi), transmission, O_PRIME, Q, v2, k: output.k, w: output.w, tip: output.tip, xSlide, ySlide };
+    return { phiDeg, psiDeg: deg(psi), couplerDeg: signedDeg(couplerAngle), transmission, O_PRIME, Q, v2, k: output.k, w: output.w, tip: output.tip, xSlide, ySlide };
   }
 
   const TIP_PATH = Array.from({ length: 181 }, (_, index) => solveNew(START_DEG + (END_DEG - START_DEG) * index / 180).tip);
@@ -151,6 +164,33 @@
     }
   };
 
+  const COUPLER_STEPS = {
+    1: {
+      badge: "01 · FOUR LINKS",
+      title: "4R을 이루는 네 링크부터 구분합니다",
+      equation: "ground + input crank + coupler + output rocker = 4R",
+      description: "O′–Q는 움직이지 않는 ground link, O′–V₂는 입력 crank, V₂–K–W는 coupler body, K–Q는 output rocker입니다. 네 연결부 O′, V₂, K, Q가 모두 revolute joint이므로 4R이라고 부릅니다."
+    },
+    2: {
+      badge: "02 · ONE RIGID BODY",
+      title: "V₂, K, W 사이의 형상은 운동 중 절대 변하지 않습니다",
+      equation: "|V₂K|=ρ,  |V₂W|=r₂,  |KW|=constant,  ∠KV₂W=β",
+      description: "세 점은 하나의 삼각 plate 위에 고정되어 있습니다. K와 W가 각각 따로 회전하는 것이 아니라 coupler body 전체가 한 번에 이동하고 회전합니다. 그래서 W를 추가해도 자유도는 늘어나지 않습니다."
+    },
+    3: {
+      badge: "03 · COUPLER POSE",
+      title: "두 핀 V₂와 K가 coupler의 위치와 회전을 모두 정합니다",
+      equation: "θc=atan2(K−V₂),  W=V₂+R(θc)rᶜW",
+      description: "V₂가 coupler 좌표계의 원점, V₂→K가 local x축입니다. W의 local 좌표 rᶜW는 항상 같은 숫자이므로, 현재 θc만큼 회전한 뒤 V₂만큼 평행이동하면 W의 ground 좌표가 바로 나옵니다."
+    },
+    4: {
+      badge: "04 · COUPLER CURVE",
+      title: "여러 순간의 coupler point W를 이으면 coupler curve가 됩니다",
+      equation: "C_W={W(φ) | φstart≤φ≤φend}",
+      description: "희미한 삼각형은 서로 다른 φ에서의 같은 coupler body입니다. 각 자세의 W만 모으면 초록색 곡선이 됩니다. 이 곡선은 물리적인 가이드가 아니라 W의 시간에 따른 자취입니다."
+    }
+  };
+
   function svgElement(name, attrs, parent) {
     const node = document.createElementNS(NS, name);
     Object.entries(attrs || {}).forEach(([key, value]) => node.setAttribute(key, String(value)));
@@ -168,6 +208,7 @@
     text.textContent = label;
   }
   function pathData(points) { return points.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(3)},${sy(p.y).toFixed(3)}`).join(" "); }
+  function polygonData(points) { return points.map(p => `${p.x.toFixed(3)},${sy(p.y).toFixed(3)}`).join(" "); }
 
   function textAt(svg, p, value, className, dx = 0, dy = 0, anchor = "start") {
     const node = svgElement("text", { x: p.x + dx, y: sy(p.y) + dy, class: className, "text-anchor": anchor }, svg);
@@ -388,6 +429,100 @@
     document.getElementById("conceptCarrierAngle").textContent = "0.000°";
   }
 
+  function drawCouplerBody(svg, pose, ghost = false) {
+    svgElement("polygon", {
+      points: polygonData([pose.v2, pose.k, pose.w]),
+      class: ghost ? "coupler-ghost-body" : "coupler-body-fill"
+    }, svg);
+    if (!ghost) {
+      line(svg, pose.v2, pose.k, "coupler-body-edge");
+      line(svg, pose.k, pose.w, "coupler-body-edge");
+      line(svg, pose.w, pose.v2, "coupler-body-edge");
+    }
+  }
+
+  function drawCouplerSkeleton(svg, pose) {
+    line(svg, pose.O_PRIME, pose.Q, "kin-link platform");
+    line(svg, pose.O_PRIME, pose.v2, "kin-link stage1");
+    drawCouplerBody(svg, pose, false);
+    line(svg, pose.k, pose.Q, "kin-link coupling");
+    [[pose.O_PRIME, "O′", "ground"], [pose.Q, "Q", "ground"], [pose.v2, "V2"], [pose.k, "K"], [pose.w, "W"]]
+      .forEach(item => joint(svg, item[0], item[1], item[2]));
+  }
+
+  function drawCoupler(pose) {
+    const svg = document.getElementById("couplerMechanism");
+    const step = state.couplerStep;
+    drawConceptBackground(svg, step === 4 ? W_PATH : null);
+
+    if (step === 1) {
+      drawCouplerSkeleton(svg, pose);
+      const groundMid = scale(add(pose.O_PRIME, pose.Q), .5);
+      const crankMid = scale(add(pose.O_PRIME, pose.v2), .5);
+      const rockerMid = scale(add(pose.k, pose.Q), .5);
+      const bodyCenter = scale(add(add(pose.v2, pose.k), pose.w), 1 / 3);
+      textAt(svg, groundMid, "1 · ground", "coupler-svg-label", 6, 2);
+      textAt(svg, crankMid, "2 · input crank", "coupler-svg-label", 4, -6);
+      textAt(svg, bodyCenter, "3 · coupler body", "coupler-svg-label", -2, -11, "middle");
+      textAt(svg, rockerMid, "4 · output rocker", "coupler-svg-label", 5, 1);
+    } else if (step === 2) {
+      line(svg, pose.O_PRIME, pose.Q, "coupler-ghost-link");
+      line(svg, pose.O_PRIME, pose.v2, "coupler-ghost-link");
+      line(svg, pose.k, pose.Q, "coupler-ghost-link");
+      drawCouplerBody(svg, pose, false);
+      svgElement("circle", { cx: pose.w.x, cy: sy(pose.w.y), r: 4.8, class: "coupler-point-halo" }, svg);
+      [[pose.v2, "V2"], [pose.k, "K"], [pose.w, "W"]].forEach(item => joint(svg, item[0], item[1], item[2]));
+      textAt(svg, scale(add(pose.v2, pose.k), .5), `ρ = ${RHO.toFixed(2)}`, "coupler-svg-label", 1, -5, "middle");
+      textAt(svg, scale(add(pose.v2, pose.w), .5), `r₂ = ${R2.toFixed(2)}`, "coupler-svg-label", -2, 8, "middle");
+      textAt(svg, scale(add(pose.k, pose.w), .5), `KW = ${COUPLER_KW.toFixed(2)}`, "coupler-svg-sub", -2, -4, "middle");
+      textAt(svg, pose.v2, `β = ${signedDeg(COUPLER_BETA).toFixed(2)}°`, "coupler-svg-label", 7, 10);
+      textAt(svg, point(-33, 25), "세 길이와 상대각은 운동 내내 일정", "coupler-svg-sub", 0, 0, "middle");
+    } else if (step === 3) {
+      line(svg, pose.O_PRIME, pose.v2, "coupler-ghost-link");
+      line(svg, pose.k, pose.Q, "coupler-ghost-link");
+      drawCouplerBody(svg, pose, false);
+      const direction = sub(pose.k, pose.v2);
+      const u = scale(direction, 1 / length(direction));
+      const v = point(-u.y, u.x);
+      const relativeW = sub(pose.w, pose.v2);
+      const aW = dot(relativeW, u);
+      const bW = dot(relativeW, v);
+      const uEnd = add(pose.v2, scale(u, 28));
+      const vEnd = add(pose.v2, scale(v, 22));
+      const projection = add(pose.v2, scale(u, aW));
+      line(svg, pose.v2, uEnd, "coupler-axis-u");
+      line(svg, pose.v2, vEnd, "coupler-axis-v");
+      line(svg, projection, pose.w, "coupler-projection");
+      svgElement("circle", { cx: pose.w.x, cy: sy(pose.w.y), r: 4.8, class: "coupler-point-halo" }, svg);
+      [[pose.v2, "V2"], [pose.k, "K"], [pose.w, "W"]].forEach(item => joint(svg, item[0], item[1], item[2]));
+      textAt(svg, uEnd, "uᶜ · V₂→K", "coupler-svg-label", 2, -2);
+      textAt(svg, vEnd, "vᶜ", "coupler-svg-label", 2, -2);
+      textAt(svg, scale(add(pose.v2, projection), .5), `aW=${aW.toFixed(2)}`, "coupler-svg-sub", 0, -5, "middle");
+      textAt(svg, scale(add(projection, pose.w), .5), `bW=${bW.toFixed(2)}`, "coupler-svg-sub", 4, 0);
+      textAt(svg, pose.v2, `θc=${pose.couplerDeg.toFixed(2)}°`, "coupler-svg-label", 7, 10);
+    } else {
+      [0, .25, .5, .75, 1].forEach(progress => {
+        const ghostPose = solveNew(START_DEG + (END_DEG - START_DEG) * progress);
+        drawCouplerBody(svg, ghostPose, true);
+        svgElement("circle", { cx: ghostPose.w.x, cy: sy(ghostPose.w.y), r: 1.4, fill: "rgba(98,223,149,.45)" }, svg);
+      });
+      line(svg, pose.O_PRIME, pose.Q, "kin-link platform");
+      line(svg, pose.O_PRIME, pose.v2, "kin-link stage1");
+      line(svg, pose.k, pose.Q, "kin-link coupling");
+      drawCouplerBody(svg, pose, false);
+      svgElement("circle", { cx: pose.w.x, cy: sy(pose.w.y), r: 4.8, class: "coupler-point-halo" }, svg);
+      [[pose.O_PRIME, "O′", "ground"], [pose.Q, "Q", "ground"], [pose.v2, "V2"], [pose.k, "K"], [pose.w, "W"]]
+        .forEach(item => joint(svg, item[0], item[1], item[2]));
+      textAt(svg, point(-29, 21), "W의 자취 = coupler curve", "coupler-svg-label", 0, 0, "middle");
+      textAt(svg, pose.w, "현재 W", "coupler-svg-label", 6, -8);
+    }
+
+    document.getElementById("couplerTheta").textContent = `${pose.couplerDeg.toFixed(2)}°`;
+    document.getElementById("couplerBeta").textContent = `${signedDeg(COUPLER_BETA).toFixed(2)}°`;
+    document.getElementById("couplerRho").textContent = `${RHO.toFixed(2)} mm`;
+    document.getElementById("couplerR2").textContent = `${R2.toFixed(2)} mm`;
+  }
+
   function setConceptStep(step) {
     state.conceptStep = clamp(Number(step), 1, 8);
     const copy = CONCEPT_STEPS[state.conceptStep];
@@ -397,6 +532,19 @@
     document.getElementById("conceptDescription").textContent = copy.description;
     document.querySelectorAll("[data-concept-step]").forEach(button => {
       button.classList.toggle("active", Number(button.dataset.conceptStep) === state.conceptStep);
+    });
+    draw();
+  }
+
+  function setCouplerStep(step) {
+    state.couplerStep = clamp(Number(step), 1, 4);
+    const copy = COUPLER_STEPS[state.couplerStep];
+    document.getElementById("couplerBadge").textContent = copy.badge;
+    document.getElementById("couplerStageTitle").textContent = copy.title;
+    document.getElementById("couplerEquation").textContent = copy.equation;
+    document.getElementById("couplerDescription").textContent = copy.description;
+    document.querySelectorAll("[data-coupler-step]").forEach(button => {
+      button.classList.toggle("active", Number(button.dataset.couplerStep) === state.couplerStep);
     });
     draw();
   }
@@ -426,6 +574,7 @@
     drawOld(oldPose, measuredAngle);
     drawNew(newPose);
     drawConcept(oldPose, newPose);
+    drawCoupler(newPose);
 
     const critical = oldCritical(oldPose);
     const oldPanel = document.querySelector(".old-panel");
@@ -449,7 +598,7 @@
 
   function setPlaying(value) {
     state.playing = Boolean(value);
-    ["playButton", "conceptPlay"].forEach(id => {
+    ["playButton", "conceptPlay", "couplerPlay"].forEach(id => {
       const button = document.getElementById(id);
       button.textContent = state.playing ? "Ⅱ 정지" : "▶ 재생";
       button.setAttribute("aria-pressed", String(state.playing));
@@ -462,11 +611,18 @@
   });
 
   document.getElementById("conceptPlay").addEventListener("click", () => setPlaying(!state.playing));
+  document.getElementById("couplerPlay").addEventListener("click", () => setPlaying(!state.playing));
 
   document.getElementById("conceptSteps").addEventListener("click", event => {
     const button = event.target.closest("button[data-concept-step]");
     if (!button) return;
     setConceptStep(button.dataset.conceptStep);
+  });
+
+  document.getElementById("couplerSteps").addEventListener("click", event => {
+    const button = event.target.closest("button[data-coupler-step]");
+    if (!button) return;
+    setCouplerStep(button.dataset.couplerStep);
   });
 
   document.getElementById("poseSlider").addEventListener("input", event => {
@@ -498,5 +654,6 @@
 
   setPlaying(state.playing);
   setConceptStep(1);
+  setCouplerStep(1);
   requestAnimationFrame(animate);
 })();
